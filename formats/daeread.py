@@ -1,5 +1,7 @@
 from xml.etree.ElementTree import *
 
+from formats.scwwrite import Writer
+
 
 def _(*args):
     print('[ScwUtils]', end=' ')
@@ -8,7 +10,7 @@ def _(*args):
     print()
 
 
-class Reader:
+class Parser:
     def node(self, nodes):
         namespaces = {
             'collada': 'http://www.collada.org/2005/11/COLLADASchema'
@@ -19,7 +21,7 @@ class Reader:
             instance_geometry = node.findall('collada:instance_geometry', namespaces)
             instance_controller = node.findall('collada:instance_controller', namespaces)
 
-            childrens = self.node(node.findall('collada:node', namespaces))
+            children = self.node(node.findall('collada:node', namespaces))
             node_data = {
                 'name': node.attrib['id'],
                 'has_target': True if instance_geometry or instance_controller else False
@@ -47,15 +49,15 @@ class Reader:
                     node_data['target_type'] = 'CONT'
 
                 if instance_geometry:
-                    geometry_url = instance_geometry[0].attrib['url'][1:]
-                    node_data['target'] = geometry_url
+                    geometry_url = instance_geometry[0].attrib['url']
+                    node_data['target'] = geometry_url[1:]
                 elif instance_controller:
-                    controller_url = instance_controller[0].attrib['url'][1:]
-                    node_data['target'] = controller_url
+                    controller_url = instance_controller[0].attrib['url']
+                    node_data['target'] = controller_url[1:]
 
                 node_data['binds'] = binds
 
-            node_data['childrens'] = childrens
+            node_data['children'] = children
 
             nodes_list.append(node_data)
 
@@ -74,195 +76,230 @@ class Reader:
                 node_data['target'] = node['target']
                 node_data['binds'] = node['binds']
 
+            if not node_data['has_target']:
+                node_data['frames_settings'] = [0, 0, 0, 0, 0, 0, 0, 0]
+                node_data['frames'] = [{
+                    'frame_id': 0,
+                    'rotation': {'x': 0, 'y': 0, 'z': 0, 'w': 0},
+                    'position': {'x': 0, 'y': 0, 'z': 0},
+                    'scale': {'x': 1, 'y': 1, 'z': 1}
+                }]
+            else:
+                node_data['frames'] = []
+
             # node_data['frames'] = node['frames']
-            self.fixed_nodes_list.append(node_data)
-
-            for children in node['childrens']:
-                children_data = {
-                    'name': children['name'],
-                    'parent': node['name'],
-                    'has_target': children['has_target']
-                }
-
-                if children_data['has_target']:
-                    children_data['target_type'] = children['target_type']
-                    children_data['target'] = children['target']
-                    children_data['binds'] = children['binds']
-
-                # children_data['frames'] = children['frames']
-                self.fixed_nodes_list.append(children_data)
-                self.fix_nodes_list(children['childrens'], node_data['name'])
+            self.file_data['nodes'].append(node_data)
+            self.fix_nodes_list(node['children'], node['name'])
 
     def __init__(self, file_data):
-        self.fixed_nodes_list = []
+        self.file_data = {'header': {'version': 2,
+                                     'materials_file': 'sc3d/character_materials.scw'},
+                          'materials': [],
+                          'geometries': [],
+                          'cameras': [],
+                          'nodes': []}
+
+        self.geometry_info = {}
+
         root = fromstring(file_data)
         # tree = parse(file_path)
         # root = tree.getroot()
 
-        namespaces = {
+        self.namespaces = {
             'collada': 'http://www.collada.org/2005/11/COLLADASchema'
         }
 
         # Libraries
-        self.library_geometries = root.find('./collada:library_geometries', namespaces)
-        self.library_controllers = root.find('./collada:library_controllers', namespaces)
-        library_scenes = root.find('./collada:library_visual_scenes', namespaces)
+        self.library_materials = root.find('./collada:library_geometries', self.namespaces)
+        self.library_geometries = root.find('./collada:library_geometries', self.namespaces)
+        self.library_controllers = root.find('./collada:library_controllers', self.namespaces)
+        library_scenes = root.find('./collada:library_visual_scenes', self.namespaces)
         # Libraries
 
-        instance_scene = root.find('./collada:scene', namespaces).find('collada:instance_visual_scene', namespaces)
+        instance_scene = root.find('./collada:scene', self.namespaces).find('collada:instance_visual_scene',
+                                                                            self.namespaces)
         scene_url = instance_scene.attrib['url'][1:]
-        scene = library_scenes.find(f'collada:visual_scene[@id="{scene_url}"]', namespaces)
+        scene = library_scenes.find(f'collada:visual_scene[@id="{scene_url}"]', self.namespaces)
 
-        nodes = self.node(scene.findall('collada:node', namespaces))
+        nodes = self.node(scene.findall('collada:node', self.namespaces))
         self.fix_nodes_list(nodes)
 
-        for node in self.fixed_nodes_list:
+    def parse_nodes(self):
+        nodes = self.file_data['nodes']
+        for node in nodes:
+            node: dict = node  # this line for fix "Expected type"
             if node['has_target']:
                 controller = None
                 geometry = None
 
                 if node['target_type'] == 'CONT':
                     controller = self.library_controllers \
-                        .find(f'collada:controller[@id="{node["target"]}"]', namespaces)
+                        .find(f'collada:controller[@id="{node["target"]}"]', self.namespaces)
 
                     geometry_url = controller[0].attrib['source'][1:]
                     geometry = self.library_geometries \
-                        .find(f'collada:geometry[@id="{geometry_url}"]', namespaces)
+                        .find(f'collada:geometry[@id="{geometry_url}"]', self.namespaces)
                 elif node['target_type'] == 'GEOM':
                     geometry = self.library_geometries \
-                        .find(f'collada:geometry[@id="{node["target"]}"]', namespaces)
+                        .find(f'collada:geometry[@id="{node["target"]}"]', self.namespaces)
 
                 if geometry is not None:
-                    name = geometry.attrib['id']
-                    geometry_info = {'name': name,
-                                     'group': node['parent'],
-                                     'vertices': [],
-                                     'have_bind_matrix': True if controller is not None else False,
-                                     'materials': []}
+                    self.geometry_info = {'name': '',
+                                          'group': node['parent'],
+                                          'vertices': [],
+                                          'have_bind_matrix': False,
+                                          'materials': []}
+                    if controller is not None:
+                        self.parse_controller(controller)
 
-                    mesh = geometry[0]
-                    triangles = mesh.findall('collada:triangles', namespaces)
-                    inputs = triangles[0].findall('collada:input', namespaces)
-                    for _input in inputs:
-                        semantic = _input.attrib['semantic']
-                        source_link = _input.attrib['source'][1:]
-                        source = mesh.find(f'*[@id="{source_link}"]')
+                    self.parse_geometry(geometry)
 
-                        if semantic == 'VERTEX':
-                            vertices_input = source[0]
-                            semantic = vertices_input.attrib['semantic']
-                            source_link = vertices_input.attrib['source'][1:]
-                            source = mesh.find(f'*[@id="{source_link}"]')
+    def parse_controller(self, controller):
+        self.geometry_info['have_bind_matrix'] = True
 
-                        float_array = source.find('collada:float_array', namespaces)
-                        accessor = source.find('collada:technique_common/collada:accessor', namespaces)
+        skin = controller[0]
 
-                        vertex_temp = [float(floating) for floating in float_array.text.split()]
+        bind_shape_matrix = skin.find('collada:bind_shape_matrix', self.namespaces).text
+        bind_shape_matrix = [float(x) for x in bind_shape_matrix.split()]
 
-                        scale = max(max(vertex_temp), abs(min(vertex_temp)))
-                        if scale < 1:
-                            scale = 1
-                        if semantic == 'TEXCOORD':
-                            vertex_temp[1::2] = [1 - x for x in vertex_temp[1::2]]
+        self.geometry_info['bind_matrix'] = bind_shape_matrix
 
-                        vertex = []
-                        for x in range(0, len(vertex_temp) // len(accessor), len(accessor)):
-                            vertex.append(vertex_temp[x: x + len(accessor)])
+        self.geometry_info['joints'] = []
+        joints = skin.find('collada:joints', self.namespaces)
+        joint_inputs = joints.findall('collada:input', self.namespaces)
+        for _input in joint_inputs:
+            # semantic = _input.attrib['semantic']
+            source_url = _input.attrib['source']
+            source = skin.find(f'collada:source[@id="{source_url[1:]}"]', self.namespaces)
 
-                        geometry_info['vertices'].append({'type': semantic,
-                                                          'index': 0,
-                                                          'scale': scale,
-                                                          'vertex': vertex})
-                    for triangle in triangles:
-                        triangles_material = triangle.attrib['material']
+            accessor = source.find('collada:technique_common/collada:accessor', self.namespaces)
+            accessor_source_url = accessor.attrib['source']
+            accessor_source = source.find(f'collada:*[@id="{accessor_source_url[1:]}"]', self.namespaces)
+            params = accessor.findall('collada:param', self.namespaces)
+            for param in params:
+                param_name = param.attrib['name']
+                # param_type = param.attrib['type']
 
-                        p = triangle.find('collada:p', namespaces)
-                        polygons_temp = [int(integer) for integer in p.text.split()]
+                if param_name == 'JOINT':
+                    for name in accessor_source.text.split():
+                        self.geometry_info['joints'].append({
+                            'name': name
+                        })
 
-                        polygons = []
-                        for x in range(0, len(polygons_temp) // len(inputs) // 3, len(inputs) * 3):
-                            temp_list = []
-                            for x1 in range(len(inputs)):
-                                second_temp_list = []
-                                for x2 in range(3):
-                                    second_temp_list.append(polygons_temp[x + x1 + x2])
-                                temp_list.append(second_temp_list)
-                            polygons.append(temp_list)
-                        geometry_info['materials'].append({'name': triangles_material,
-                                                           'polygons': polygons})
-                    print(geometry_info)
+                if param_name == 'TRANSFORM':
+                    for x in range(int(accessor_source.attrib['count'])):
+                        matrix = [float(x) for x in accessor_source.text.split()[x * 16:(x + 1) * 16]]
+                        self.geometry_info['joints'][x]['matrix'] = matrix
 
-        #
-        # technique_common = instance_geometry[0].find('.//collada:technique_common', namespaces)
-        # instance_materials = technique_common.findall('collada:instance_material', namespaces)
-        # for instance_material in instance_materials:
-        #     symbol = instance_material.attrib['symbol']
-        #     target = instance_material.attrib['target'][1:]
-        #     print(symbol, target)
+        self.geometry_info['weights'] = {}
+        vertex_weights = skin.find('collada:vertex_weights', self.namespaces)
+        vertex_weights_inputs = vertex_weights.findall('collada:input', self.namespaces)
+        for _input in vertex_weights_inputs:
+            semantic = _input.attrib['semantic']
+            source_url = _input.attrib['source']
+            source = skin.find(f'collada:source[@id="{source_url[1:]}"]', self.namespaces)
 
-        # for material in root.findall('./collada:library_materials/collada:material', namespaces):
-        #     name = material.attrib['id']
-        #
-        # geom_list = []
-        # for geometry in root.findall('./collada:library_geometries/collada:geometry', namespaces):
-        #     name = geometry.attrib['id']
-        #     print(geometry.attrib)
-        #     geom_dict = {'name': name,
-        #                  'group': '',
-        #                  'vertices': [],
-        #                  'have_bind_matrix': False,
-        #                  'materials': []}
-        #
-        #     mesh = geometry[0]
-        #     triangles = mesh.findall('collada:triangles', namespaces)
-        #     inputs = triangles[0].findall('collada:input', namespaces)
-        #     for _input in inputs:
-        #         semantic = _input.attrib['semantic']
-        #         source_link = _input.attrib['source'][1:]
-        #         source = mesh.find(f'*[@id="{source_link}"]')
-        #
-        #         if semantic == 'VERTEX':
-        #             vertices_input = source[0]
-        #             semantic = vertices_input.attrib['semantic']
-        #             source_link = vertices_input.attrib['source'][1:]
-        #             source = mesh.find(f'*[@id="{source_link}"]')
-        #
-        #         float_array = source.find('collada:float_array', namespaces)
-        #         accessor = source.find('collada:technique_common/collada:accessor', namespaces)
-        #
-        #         vertex_temp = [float(floating) for floating in float_array.text.split()]
-        #
-        #         scale = max(max(vertex_temp), abs(min(vertex_temp)))
-        #         if semantic == 'TEXCOORD':
-        #             vertex_temp[1::2] = [1 - x for x in vertex_temp[1::2]]
-        #
-        #         vertex = []
-        #         for x in range(0, len(vertex_temp) // len(accessor), len(accessor)):
-        #             vertex.append(vertex_temp[x: x + len(accessor)])
-        #
-        #         geom_dict['vertices'].append({'type': semantic,
-        #                                       'index': 0,
-        #                                       'scale': scale,
-        #                                       'vertex': vertex})
-        #     for triangle in triangles:
-        #         triangles_material = triangle.attrib['material']
-        #
-        #         p = triangle.find('collada:p', namespaces)
-        #         polygons_temp = [int(integer) for integer in p.text.split()]
-        #
-        #         polygons = []
-        #         for x in range(0, len(polygons_temp) // len(inputs) // 3, len(inputs) * 3):
-        #             temp_list = []
-        #             for x1 in range(len(inputs)):
-        #                 second_temp_list = []
-        #                 for x2 in range(3):
-        #                     second_temp_list.append(polygons_temp[x + x1 + x2])
-        #                 temp_list.append(second_temp_list)
-        #             polygons.append(temp_list)
-        #         geom_dict['materials'].append({'name': triangles_material,
-        #                                        'polygons': polygons})
-        #     geom_list.append(geom_dict)
+            if semantic == 'WEIGHT':
+                accessor = source.find('collada:technique_common/collada:accessor', self.namespaces)
+                accessor_source_url = accessor.attrib['source']
+                accessor_source = source.find(f'collada:*[@id="{accessor_source_url[1:]}"]', self.namespaces)
+
+                params = accessor.findall('collada:param', self.namespaces)
+                for param in params:
+                    param_name = param.attrib['name']
+                    # param_type = param.attrib['type']
+
+                    if param_name == 'WEIGHT':
+                        weights = [float(x) for x in accessor_source.text.split()]
+                        self.geometry_info['weights']['weights'] = weights
+
+            vcount = vertex_weights.find('collada:vcount', self.namespaces).text
+            vcount = [int(x) for x in vcount.split()]
+            self.geometry_info['weights']['vcount'] = vcount
+
+            v = vertex_weights.find('collada:v', self.namespaces).text
+            v = [int(x) for x in v.split()]
+            self.geometry_info['weights']['vertex_weight'] = v
+
+    def parse_geometry(self, geometry):
+        name = geometry.attrib['id']
+
+        self.geometry_info['name'] = name
+
+        mesh = geometry[0]
+        triangles = mesh.findall('collada:triangles', self.namespaces)
+        inputs = triangles[0].findall('collada:input', self.namespaces)
+        for _input in inputs:
+            semantic = _input.attrib['semantic']
+            source_link = _input.attrib['source'][1:]
+            source = mesh.find(f'*[@id="{source_link}"]')
+
+            if semantic == 'VERTEX':
+                vertices_input = source[0]
+                semantic = vertices_input.attrib['semantic']
+                source_link = vertices_input.attrib['source'][1:]
+                source = mesh.find(f'*[@id="{source_link}"]')
+
+            float_array = source.find('collada:float_array', self.namespaces)
+            accessor = source.find('collada:technique_common/collada:accessor', self.namespaces)
+
+            vertex_temp = [float(floating) for floating in float_array.text.split()]
+
+            scale = max(max(vertex_temp), abs(min(vertex_temp)))
+            if scale < 1:
+                scale = 1
+            if semantic == 'TEXCOORD':
+                vertex_temp[1::2] = [1 - x for x in vertex_temp[1::2]]
+
+            vertex = []
+            for x in range(0, len(vertex_temp), len(accessor)):
+                vertex.append(vertex_temp[x: x + len(accessor)])
+
+            self.geometry_info['vertices'].append({'type': semantic,
+                                                   'index': 0,
+                                                   'scale': scale,
+                                                   'vertex': vertex})
+        for triangle in triangles:
+            triangles_material = triangle.attrib['material']
+
+            p = triangle.find('collada:p', self.namespaces)
+            polygons_temp = [int(integer) for integer in p.text.split()]
+
+            polygons = []
+            for x in range(0, len(polygons_temp), len(inputs) * 3):
+                temp_list = []
+                for x1 in range(len(inputs)):
+                    second_temp_list = []
+                    for x2 in range(3):
+                        second_temp_list.append(polygons_temp[x + x1 + x2])
+                    temp_list.append(second_temp_list)
+                polygons.append(temp_list)
+            self.geometry_info['materials'].append({'name': triangles_material,
+                                                    'polygons': polygons})
+        self.file_data['geometries'].append(self.geometry_info)
+
+
+# NODES TEMPLATE
+# {'name': ...,
+#  'parent': ...,
+#  'has_target': False,
+#  'frames': [{'frame_id': 0,
+#              'rotation': {'x': ...,
+#                           'y': ...,
+#                           'z': ...,
+#                           'w': ...},
+#              'position': {'x': ...,
+#                           'y': ...,
+#                           'z': ...},
+#              'scale': {'x': ...,
+#                        'y': ...,
+#                        'z': ...},
+#              }]}
 
 
 if __name__ == '__main__':
-    reader = Reader(open('../8bit_geo.dae').read())
+    parser = Parser(open('../8bit_geo.dae').read())
+    parser.parse_nodes()
+
+    writer = Writer(parser.file_data)
+    open('../8bit_geo.scw', 'wb').write(writer.writen)

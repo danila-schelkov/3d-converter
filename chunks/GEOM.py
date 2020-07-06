@@ -1,5 +1,5 @@
-from scw.utils.reader import Reader
-from scw.utils.writer import Writer
+from utils import Reader
+from utils import Writer
 
 
 class Decoder(Reader):
@@ -70,7 +70,7 @@ class Decoder(Reader):
                 if pair[1] != 0:
                     vcount[x] += 1
                     vertex_weight.append(pair[0])
-                    if pair[1] not in weights:
+                    if pair[1]/65535 not in weights:
                         weights.append(pair[1]/65535)
                     vertex_weight.append(weights.index(pair[1]/65535))
         materials_count = self.readUByte()
@@ -84,7 +84,10 @@ class Decoder(Reader):
             for x1 in range(polygons_count):
                 temp_list = []
                 for x2 in range(3):
-                    temp_list.append([self.readUInteger(vertex_id_length) for x3 in range(inputs_count)])
+                    second_temp_list = []
+                    for x3 in range(inputs_count):
+                        second_temp_list.append(self.readUInteger(vertex_id_length))
+                    temp_list.append(second_temp_list)
                 polygons.append(temp_list)
             materials.append({'name': material_name, 'polygons': polygons})
 
@@ -103,12 +106,35 @@ class Decoder(Reader):
 
 
 class Encoder(Writer):
-    def __init__(self, info: dict):
+    def __init__(self, data: dict):
         super().__init__()
-        self.writeString(info['name'])
-        self.writeString(info['group'])
-        self.writeUByte(len(info['vertices']))
-        for vertex in info['vertices']:
+        self.name = 'GEOM'
+        self.data = data
+
+        self.encode()
+
+        self.length = len(self.buffer)
+        
+    def encode(self):
+        self.writeString(self.data['name'])
+        self.writeString(self.data['group'])
+
+        self.encode_vertices(self.data['vertices'])
+
+        self.writeBool(self.data['have_bind_matrix'])
+        if self.data['have_bind_matrix']:
+            for x in self.data['bind_matrix']:
+                self.writeFloat(x)
+
+        self.encode_joints()
+
+        self.encode_weight()
+
+        self.encode_triangles()
+
+    def encode_vertices(self, vertices: dict):
+        self.writeUByte(len(vertices))
+        for vertex in vertices:
             self.writeString(vertex['type'])
             self.writeUByte(vertex['index'])
             self.writeUShort(len(vertex['vertex'][0]))
@@ -116,34 +142,34 @@ class Encoder(Writer):
             self.writeUInt32(len(vertex['vertex']))
             for coordinates_massive in vertex['vertex']:
                 if vertex['type'] == 'TEXCOORD':
-                    coordinates_massive[1::2] = [1-x for x in coordinates_massive[1::2]]
+                    coordinates_massive[1::2] = [1 - x for x in coordinates_massive[1::2]]
                 for coordinate in coordinates_massive:
                     coordinate /= vertex['scale']
                     coordinate *= 32512
                     self.writeShort(round(coordinate))
-        self.writeBool(info['have_bind_matrix'])
-        if info['have_bind_matrix']:
-            for x in info['bind_matrix']:
-                self.writeFloat(x)
-        if info['have_bind_matrix']:
-            self.writeUByte(len(info['joints']))
 
-            for joint in info['joints']:
+    def encode_joints(self):
+        if self.data['have_bind_matrix']:
+            self.writeUByte(len(self.data['joints']))
+
+            for joint in self.data['joints']:
                 self.writeString(joint['name'])
                 for x in joint['matrix']:
                     self.writeFloat(x)
         else:
             self.writeUByte(0)
-        if info['have_bind_matrix']:
-            self.writeUInt32(len(info['weights']['vcount']))
+
+    def encode_weight(self):
+        if self.data['have_bind_matrix']:
+            self.writeUInt32(len(self.data['weights']['vcount']))
             past_index = 0
-            for vcount in info['weights']['vcount']:
+            for vcount in self.data['weights']['vcount']:
                 temp_list = []
                 for x in range(vcount):
                     vertex_weight_index = x * 2 + past_index * 2
-                    joint_id = info['weights']['vertex_weight'][vertex_weight_index]
-                    weight_id = info['weights']['vertex_weight'][vertex_weight_index + 1]
-                    weight = int(info['weights']['weights'][weight_id] * 65535)
+                    joint_id = self.data['weights']['vertex_weight'][vertex_weight_index]
+                    weight_id = self.data['weights']['vertex_weight'][vertex_weight_index + 1]
+                    weight = int(self.data['weights']['weights'][weight_id] * 65535)
                     temp_list.append([joint_id, weight])
                 past_index += vcount
                 while len(temp_list) < 4:
@@ -154,14 +180,32 @@ class Encoder(Writer):
                     self.writeUShort(x[1])
         else:
             self.writeUInt32(0)
-        self.writeUByte(len(info['materials']))
-        for material in info['materials']:
+
+    def encode_triangles(self):
+        self.writeUByte(len(self.data['materials']))
+        for material in self.data['materials']:
             self.writeString(material['name'])
             self.writeString('')
             self.writeUShort(len(material['polygons']))
-            self.writeUByte(len(material['polygons'][0][0]))
-            self.writeUByte(2)
-            for x in material['polygons']:
-                for x1 in x:
-                    for x2 in x1:
-                        self.writeUShort(x2)
+
+            # Calculate settings
+            inputs_count = len(material['polygons'][0][0])
+
+            maximal_value = max(max(max(material['polygons'])))
+            short_length = 1 if maximal_value <= 255 else 2
+
+            # Write Settings
+            self.writeUByte(inputs_count)
+            self.writeUByte(short_length)
+
+            # Write Polygons
+            if short_length == 2:
+                for x in material['polygons']:
+                    for x1 in x:
+                        for x2 in x1:
+                            self.writeUShort(x2)
+            elif short_length == 1:
+                for x in material['polygons']:
+                    for x1 in x:
+                        for x2 in x1:
+                            self.writeUByte(x2)

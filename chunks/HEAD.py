@@ -1,5 +1,5 @@
-from scw.utils.reader import Reader
-from scw.utils.writer import Writer
+from utils import Reader
+from utils import Writer
 
 
 class Decoder(Reader):
@@ -22,11 +22,19 @@ class Decoder(Reader):
 
 
 class Encoder(Writer):
-    def __init__(self, info: dict):
+    def __init__(self, data: dict):
         super().__init__()
-        self.writeUShort(info['version'])  # version
+        self.name = 'HEAD'
+        self.data = data
+
+        self.encode()
+
+        self.length = len(self.buffer)
+
+    def encode(self):
+        self.writeUShort(self.data['version'])  # version
         self.writeUShort(30)
         self.writeUShort(0)
         self.writeUShort(249)
-        self.writeString(info['materials_file'])  # materials file
+        self.writeString(self.data['materials_file'])  # materials file
         self.writeUByte(0)

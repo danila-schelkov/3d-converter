@@ -1,5 +1,5 @@
-from scw.utils.reader import Reader
-from scw.utils.writer import Writer
+from utils import Reader
+from utils import Writer
 
 
 class Decoder(Reader):
@@ -8,5 +8,5 @@ class Decoder(Reader):
 
 
 class Encoder(Writer):
-    def __init__(self):
+    def __init__(self, info: dict):
         super().__init__()

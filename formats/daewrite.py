@@ -76,7 +76,7 @@ class Writer:
             SubElement(material, 'instance_effect', url=material_info['name'])
 
         for geometry_info in info['geometries']:  # TODO: geometries
-            pass
+            geometry = SubElement(library_geometries, 'geometry')
 
         for node_info in info['nodes']:  # TODO: nodes
             pass

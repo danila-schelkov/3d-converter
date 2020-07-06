@@ -1,5 +1,5 @@
-from scw.utils.reader import Reader
-from scw.utils.writer import Writer
+from utils import Reader
+from utils import Writer
 
 
 class Decoder(Reader):
@@ -76,10 +76,18 @@ class Decoder(Reader):
 
 
 class Encoder(Writer):
-    def __init__(self, info: dict):
+    def __init__(self, data: dict):
         super().__init__()
-        self.writeUShort(len(info['nodes']))
-        for node in info['nodes']:
+        self.name = 'NODE'
+        self.data = data
+
+        self.encode()
+
+        self.length = len(self.buffer)
+
+    def encode(self):
+        self.writeUShort(len(self.data))
+        for node in self.data:
             self.writeString(node['name'])
             self.writeString(node['parent'])
 
@@ -92,28 +100,34 @@ class Encoder(Writer):
                     self.writeString(bind['symbol'])
                     self.writeString(bind['target'])
 
-            self.writeUShort(len(node['frames']))
-            if len(node['frames']) > 0:
-                settings = node['frames_settings']
-                self.writeUByte(int(''.join(settings)[::], 2))
-                for frame in node['frames']:
-                    self.writeUShort(frame['frame_id'])
-                    if settings[7] or frame == 0:  # Rotation
-                        self.writeUShort(round(frame['rotation']['x'] * 32512))
-                        self.writeUShort(round(frame['rotation']['y'] * 32512))
-                        self.writeUShort(round(frame['rotation']['z'] * 32512))
-                        self.writeUShort(round(frame['rotation']['w'] * 32512))
+            if 'frames_settings' in node:
+                frames_settings = node['frames_settings']
+            else:
+                frames_settings = None
+            self.encode_frames(node['frames'], frames_settings)
 
-                    if settings[4] or frame == 0:  # Position X
-                        self.writeFloat(frame['position']['x'])
-                    if settings[5] or frame == 0:  # Position Y
-                        self.writeFloat(frame['position']['y'])
-                    if settings[6] or frame == 0:  # Position Z
-                        self.writeFloat(frame['position']['z'])
+    def encode_frames(self, frames, frames_settings):
+        self.writeUShort(len(frames))
+        if len(frames) > 0:
+            self.writeUByte(int(''.join([str(item) for item in frames_settings])[::], 2))
+            for frame in frames:
+                self.writeUShort(frame['frame_id'])
+                if frames_settings[7] or frames.index(frame) == 0:  # Rotation
+                    self.writeUShort(round(frame['rotation']['x'] * 32512))
+                    self.writeUShort(round(frame['rotation']['y'] * 32512))
+                    self.writeUShort(round(frame['rotation']['z'] * 32512))
+                    self.writeUShort(round(frame['rotation']['w'] * 32512))
 
-                    if settings[1] or frame == 0:  # Scale X
-                        self.writeFloat(frame['scale']['x'])
-                    if settings[2] or frame == 0:  # Scale Y
-                        self.writeFloat(frame['scale']['y'])
-                    if settings[3] or frame == 0:  # Scale Z
-                        self.writeFloat(frame['scale']['z'])
+                if frames_settings[4] or frames.index(frame) == 0:  # Position X
+                    self.writeFloat(frame['position']['x'])
+                if frames_settings[5] or frames.index(frame) == 0:  # Position Y
+                    self.writeFloat(frame['position']['y'])
+                if frames_settings[6] or frames.index(frame) == 0:  # Position Z
+                    self.writeFloat(frame['position']['z'])
+
+                if frames_settings[1] or frames.index(frame) == 0:  # Scale X
+                    self.writeFloat(frame['scale']['x'])
+                if frames_settings[2] or frames.index(frame) == 0:  # Scale Y
+                    self.writeFloat(frame['scale']['y'])
+                if frames_settings[3] or frames.index(frame) == 0:  # Scale Z
+                    self.writeFloat(frame['scale']['z'])

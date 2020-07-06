@@ -1,5 +1,5 @@
-from scw.utils.reader import Reader
-from scw.utils.writer import Writer
+from utils import Reader
+from utils import Writer
 
 
 class Decoder(Reader):
