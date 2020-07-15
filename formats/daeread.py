@@ -31,13 +31,23 @@ class Parser:
                 binds = []
 
                 if instance_geometry:
-                    for instance_material in instance_geometry[0][0][0]:
+                    instance_geometry = instance_geometry[0]
+
+                    bind_material = instance_geometry.find('collada:bind_material', self.namespaces)
+                    technique_common = bind_material[0]
+
+                    for instance_material in technique_common:
                         binds.append({
                             'symbol': instance_material.attrib['symbol'],
                             'target': instance_material.attrib['target'][1:]
                         })
                 elif instance_controller:
-                    for instance_material in instance_controller[0][0][0]:
+                    instance_controller = instance_controller[0]
+
+                    bind_material = instance_controller.find('collada:bind_material', self.namespaces)
+                    technique_common = bind_material[0]
+
+                    for instance_material in technique_common:
                         binds.append({
                             'symbol': instance_material.attrib['symbol'],
                             'target': instance_material.attrib['target'][1:]
@@ -49,10 +59,10 @@ class Parser:
                     node_data['target_type'] = 'CONT'
 
                 if instance_geometry:
-                    geometry_url = instance_geometry[0].attrib['url']
+                    geometry_url = instance_geometry.attrib['url']
                     node_data['target'] = geometry_url[1:]
                 elif instance_controller:
-                    controller_url = instance_controller[0].attrib['url']
+                    controller_url = instance_controller.attrib['url']
                     node_data['target'] = controller_url[1:]
 
                 node_data['binds'] = binds
@@ -128,6 +138,8 @@ class Parser:
         nodes = self.file_data['nodes']
         for node in nodes:
             node: dict = node  # this line for fix "Expected type"
+            for child in node:
+                print(tostring(child).decode())
             if node['has_target']:
                 controller = None
                 geometry = None
@@ -173,9 +185,11 @@ class Parser:
             source = skin.find(f'collada:source[@id="{source_url[1:]}"]', self.namespaces)
 
             accessor = source.find('collada:technique_common/collada:accessor', self.namespaces)
+            accessor_stride = int(accessor.attrib['stride'])
             accessor_source_url = accessor.attrib['source']
             accessor_source = source.find(f'collada:*[@id="{accessor_source_url[1:]}"]', self.namespaces)
             params = accessor.findall('collada:param', self.namespaces)
+
             for param in params:
                 param_name = param.attrib['name']
                 # param_type = param.attrib['type']
@@ -187,8 +201,10 @@ class Parser:
                         })
 
                 if param_name == 'TRANSFORM':
-                    for x in range(int(accessor_source.attrib['count'])):
-                        matrix = [float(x) for x in accessor_source.text.split()[x * 16:(x + 1) * 16]]
+                    for x in range(int(accessor_source.attrib['count']) // int(accessor_stride)):
+                        matrix = []
+                        for y in accessor_source.text.split()[x * accessor_stride:(x + 1) * accessor_stride]:
+                            matrix.append(float(y))
                         self.geometry_info['joints'][x]['matrix'] = matrix
 
         self.geometry_info['weights'] = {}
@@ -227,7 +243,12 @@ class Parser:
         self.geometry_info['name'] = name
 
         mesh = geometry[0]
+
         triangles = mesh.findall('collada:triangles', self.namespaces)
+        if triangles:
+            pass
+        else:
+            triangles = mesh.findall('collada:polylist', self.namespaces)
         inputs = triangles[0].findall('collada:input', self.namespaces)
         for _input in inputs:
             semantic = _input.attrib['semantic']
@@ -298,7 +319,7 @@ class Parser:
 
 
 if __name__ == '__main__':
-    parser = Parser(open('../8bit_geo.dae').read())
+    parser = Parser(open('../lol.dae').read())
     parser.parse_nodes()
 
     writer = Writer(parser.file_data)

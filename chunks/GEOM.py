@@ -1,5 +1,5 @@
-from utils import Reader
-from utils import Writer
+from utils.reader import Reader
+from utils.writer import Writer
 
 
 class Decoder(Reader):
@@ -192,7 +192,7 @@ class Encoder(Writer):
             inputs_count = len(material['polygons'][0][0])
 
             maximal_value = max(max(max(material['polygons'])))
-            short_length = 1 if maximal_value <= 255 else 2
+            short_length = 1 if maximal_value <= 128 else 2
 
             # Write Settings
             self.writeUByte(inputs_count)
@@ -203,9 +203,9 @@ class Encoder(Writer):
                 for x in material['polygons']:
                     for x1 in x:
                         for x2 in x1:
-                            self.writeUShort(x2)
+                            self.writeShort(x2)
             elif short_length == 1:
                 for x in material['polygons']:
                     for x1 in x:
                         for x2 in x1:
-                            self.writeUByte(x2)
+                            self.writeByte(x2)

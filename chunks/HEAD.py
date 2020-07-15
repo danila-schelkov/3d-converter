@@ -1,5 +1,5 @@
-from utils import Reader
-from utils import Writer
+from utils.reader import Reader
+from utils.writer import Writer
 
 
 class Decoder(Reader):

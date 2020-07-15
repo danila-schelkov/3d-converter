@@ -1,7 +1,7 @@
 import binascii
 
-from chunks import HEAD, GEOM, NODE
-from chunks import WEND
+from chunks import GEOM
+from chunks import HEAD, WEND, NODE
 
 
 def _(*args):
