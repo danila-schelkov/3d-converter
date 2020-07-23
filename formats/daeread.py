@@ -1,6 +1,8 @@
+import json
 from xml.etree.ElementTree import *
 
 from formats.scwwrite import Writer
+from utils.matrix import Matrix4x4
 
 
 def _(*args):
@@ -12,16 +14,12 @@ def _(*args):
 
 class Parser:
     def node(self, nodes):
-        namespaces = {
-            'collada': 'http://www.collada.org/2005/11/COLLADASchema'
-        }
-
         nodes_list = []
         for node in nodes:
-            instance_geometry = node.findall('collada:instance_geometry', namespaces)
-            instance_controller = node.findall('collada:instance_controller', namespaces)
+            instance_geometry = node.findall('collada:instance_geometry', self.namespaces)
+            instance_controller = node.findall('collada:instance_controller', self.namespaces)
 
-            children = self.node(node.findall('collada:node', namespaces))
+            children = self.node(node.findall('collada:node', self.namespaces))
             node_data = {
                 'name': node.attrib['id'],
                 'has_target': True if instance_geometry or instance_controller else False
@@ -67,6 +65,13 @@ class Parser:
 
                 node_data['binds'] = binds
 
+            matrix = node.findall('collada:matrix', self.namespaces)
+            if matrix:
+                matrix_data = matrix[0].text.split()
+                matrix_data = [[float(value) for value in matrix_data[x:x + 4]] for x in range(0, len(matrix_data), 4)]
+
+                node_data['matrix'] = matrix_data
+
             node_data['children'] = children
 
             nodes_list.append(node_data)
@@ -88,12 +93,22 @@ class Parser:
 
             if not node_data['has_target']:
                 node_data['frames_settings'] = [0, 0, 0, 0, 0, 0, 0, 0]
-                node_data['frames'] = [{
-                    'frame_id': 0,
-                    'rotation': {'x': 0, 'y': 0, 'z': 0, 'w': 0},
-                    'position': {'x': 0, 'y': 0, 'z': 0},
-                    'scale': {'x': 1, 'y': 1, 'z': 1}
-                }]
+                node_data['frames'] = []
+
+                if 'matrix' in node:
+                    matrix = Matrix4x4(node['matrix'])
+
+                    scale = matrix.get_scale()
+                    position = matrix.get_position()
+
+                    frame_data = {
+                        'frame_id': 0,
+                        'rotation': {'x': 0, 'y': 0, 'z': 0, 'w': 0},
+                        'position': {'x': position[0], 'y': position[1], 'z': position[2]},
+                        'scale': {'x': scale[0], 'y': scale[1], 'z': scale[2]}
+                    }
+
+                    node_data['frames'].append(frame_data)
             else:
                 node_data['frames'] = []
 
@@ -103,6 +118,7 @@ class Parser:
 
     def __init__(self, file_data):
         self.file_data = {'header': {'version': 2,
+                                     'frame_rate': 30,
                                      'materials_file': 'sc3d/character_materials.scw'},
                           'materials': [],
                           'geometries': [],
@@ -120,11 +136,76 @@ class Parser:
         }
 
         # Libraries
-        self.library_materials = root.find('./collada:library_geometries', self.namespaces)
+        self.library_materials = root.find('./collada:library_materials', self.namespaces)
+        self.library_effects = root.find('./collada:library_effects', self.namespaces)
+
         self.library_geometries = root.find('./collada:library_geometries', self.namespaces)
         self.library_controllers = root.find('./collada:library_controllers', self.namespaces)
+
         library_scenes = root.find('./collada:library_visual_scenes', self.namespaces)
         # Libraries
+
+        for material in self.library_materials:
+            material_name = material.attrib['id']
+
+            instance_effect = material.find('collada:instance_effect', self.namespaces)
+            if instance_effect is not None:
+                effect_url = instance_effect.attrib['url'][1:]
+                effect = self.library_effects.find(f'collada:effect[@id="{effect_url}"]', self.namespaces)
+
+                if effect is not None:
+                    profile = None
+                    for item in effect:
+                        if 'profile' in item.tag:
+                            profile = item
+                    technique = profile.find('collada:technique', self.namespaces)
+
+                    emission_data = None
+                    ambient_data = None
+                    diffuse_data = None
+
+                    emission = technique[0].find('collada:emission', self.namespaces)
+                    ambient = technique[0].find('collada:ambient', self.namespaces)
+                    diffuse = technique[0].find('collada:diffuse', self.namespaces)
+
+                    if 'color' in emission[0].tag:
+                        emission_data = [float(item) for item in emission[0].text.split()]
+                        emission_data[3] *= 255
+                    elif 'texture' in emission[0].tag:
+                        # emission_data = emission[0].attrib['texture']
+                        emission_data = '.'
+
+                    if 'color' in ambient[0].tag:
+                        ambient_data = [float(item) for item in ambient[0].text.split()]
+                        ambient_data[3] *= 255
+                    elif 'texture' in ambient[0].tag:
+                        # ambient_data = ambient[0].attrib['texture']
+                        ambient_data = '.'
+
+                    if 'color' in diffuse[0].tag:
+                        diffuse_data = [float(item) for item in diffuse[0].text.split()]
+                        diffuse_data[3] *= 255
+                    elif 'texture' in diffuse[0].tag:
+                        # diffuse_data = diffuse[0].attrib['texture']
+                        diffuse_data = '.'
+
+                    material_data = {
+                        'name': material_name,
+                        'effect': {
+                            'ambient': ambient_data,
+                            'diffuse': diffuse_data,
+                            'specular': '.',
+                            'colorize': [255, 255, 255, 255],
+                            'emission': emission_data,
+                            'lightmaps': {
+                                'diffuse': 'sc3d/diffuse_lightmap.png',
+                                'specular': 'sc3d/specular_lightmap.png'
+                            },
+                            'tint': [0, 0, 0, 0]
+                        }
+                    }
+
+                    self.file_data['materials'].append(material_data)
 
         instance_scene = root.find('./collada:scene', self.namespaces).find('collada:instance_visual_scene',
                                                                             self.namespaces)
@@ -138,8 +219,6 @@ class Parser:
         nodes = self.file_data['nodes']
         for node in nodes:
             node: dict = node  # this line for fix "Expected type"
-            for child in node:
-                print(tostring(child).decode())
             if node['has_target']:
                 controller = None
                 geometry = None
@@ -235,7 +314,7 @@ class Parser:
 
             v = vertex_weights.find('collada:v', self.namespaces).text
             v = [int(x) for x in v.split()]
-            self.geometry_info['weights']['vertex_weight'] = v
+            self.geometry_info['weights']['vertex_weights'] = v
 
     def parse_geometry(self, geometry):
         name = geometry.attrib['id']
@@ -319,8 +398,10 @@ class Parser:
 
 
 if __name__ == '__main__':
-    parser = Parser(open('../lol.dae').read())
+    parser = Parser(open('../8bit_geo.dae').read())
     parser.parse_nodes()
+
+    json.dump(parser.file_data, open('../parsed_info.json', 'w'))
 
     writer = Writer(parser.file_data)
     open('../8bit_geo.scw', 'wb').write(writer.writen)

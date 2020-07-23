@@ -52,7 +52,7 @@ class Writer:
 #  'materials': [{
 #      'name': ...,
 #      'effect': {
-#          'ambient': ,
+#          'ambient': {'color': []},
 #          'diffuse': ,
 #          'specular': ,
 #          'colorize': ,

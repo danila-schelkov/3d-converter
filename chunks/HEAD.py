@@ -11,13 +11,14 @@ class Decoder(Reader):
         # Variables
 
         version = self.readUShort()
-        self.readUShort()
+        frame_rate = self.readUShort()
         self.readUShort()
         self.readUShort()
         materials_file = self.readString()
         self.readUByte()
 
         self.readed['version'] = version
+        self.readed['frame_rate'] = frame_rate
         self.readed['materials_file'] = materials_file
 
 
@@ -33,7 +34,7 @@ class Encoder(Writer):
 
     def encode(self):
         self.writeUShort(self.data['version'])  # version
-        self.writeUShort(30)
+        self.writeUShort(self.data['frame_rate'])  # frame rate
         self.writeUShort(0)
         self.writeUShort(249)
         self.writeString(self.data['materials_file'])  # materials file

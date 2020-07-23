@@ -11,7 +11,7 @@ class Decoder(Reader):
         vertices = []
         bind_matrix = []
         joints = []
-        vertex_weight = []
+        vertex_weights = []
         weights = []
         vcount = []
         materials = []
@@ -54,8 +54,8 @@ class Decoder(Reader):
             for x1 in range(16):
                 joint_matrix.append(self.readFloat())
             joints.append({'name': joint_name, 'matrix': joint_matrix})
-        vertex_weight_count = self.readUInt32()
-        for x in range(vertex_weight_count):
+        vertex_weights_count = self.readUInt32()
+        for x in range(vertex_weights_count):
             vcount.append(0)
             joint_a = self.readUByte()
             joint_b = self.readUByte()
@@ -69,10 +69,10 @@ class Decoder(Reader):
             for pair in temp_list:
                 if pair[1] != 0:
                     vcount[x] += 1
-                    vertex_weight.append(pair[0])
+                    vertex_weights.append(pair[0])
                     if pair[1]/65535 not in weights:
                         weights.append(pair[1]/65535)
-                    vertex_weight.append(weights.index(pair[1]/65535))
+                    vertex_weights.append(weights.index(pair[1]/65535))
         materials_count = self.readUByte()
         for x in range(materials_count):
             polygons = []
@@ -101,7 +101,7 @@ class Decoder(Reader):
             self.readed['weights'] = {}
             self.readed['weights']['vcount'] = vcount
             self.readed['weights']['weights'] = weights
-            self.readed['weights']['vertex_weight'] = vertex_weight
+            self.readed['weights']['vertex_weights'] = vertex_weights
         self.readed['materials'] = materials
 
 
@@ -166,10 +166,18 @@ class Encoder(Writer):
             for vcount in self.data['weights']['vcount']:
                 temp_list = []
                 for x in range(vcount):
-                    vertex_weight_index = x * 2 + past_index * 2
-                    joint_id = self.data['weights']['vertex_weight'][vertex_weight_index]
-                    weight_id = self.data['weights']['vertex_weight'][vertex_weight_index + 1]
-                    weight = int(self.data['weights']['weights'][weight_id] * 65535)
+                    vertex_weights_index = x * 2 + past_index * 2
+                    joint_id = self.data['weights']['vertex_weights'][vertex_weights_index]
+                    weight_id = self.data['weights']['vertex_weights'][vertex_weights_index + 1]
+
+                    weight = self.data['weights']['weights'][weight_id]
+
+                    if weight > 1:
+                        weight = 1
+                    elif weight < 1:
+                        weight = 0
+
+                    weight = int(weight * 65535)
                     temp_list.append([joint_id, weight])
                 past_index += vcount
                 while len(temp_list) < 4:
@@ -192,7 +200,7 @@ class Encoder(Writer):
             inputs_count = len(material['polygons'][0][0])
 
             maximal_value = max(max(max(material['polygons'])))
-            short_length = 1 if maximal_value <= 128 else 2
+            short_length = 1 if maximal_value <= 255 else 2
 
             # Write Settings
             self.writeUByte(inputs_count)

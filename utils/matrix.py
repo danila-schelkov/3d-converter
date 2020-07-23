@@ -495,7 +495,7 @@ class Matrix4x4(object):
 
         return self
 
-    def put_rotation(self, xyz: tuple, w: int):
+    def put_rotation(self, xyz: tuple, w: float):
         x, y, z = xyz
 
         rotation_matrix = (
@@ -537,24 +537,14 @@ class Matrix4x4(object):
     def get_position(self):
         xyz = (self.matrix[0][3], self.matrix[1][3], self.matrix[2][3])
 
-        self.translation_matrix = Matrix4x4((
-            (1, 0, 0, xyz[0]),  # x
-            (0, 1, 0, xyz[1]),  # y
-            (0, 0, 1, xyz[2]),  # z
-            (0, 0, 0, 1)
-        ))
+        self.put_position(xyz)
 
         return xyz
 
     def get_scale(self):
         xyz = (1, 1, 1)
 
-        self.scale_matrix = Matrix4x4((
-            (xyz[0], 0, 0, 0),  # x
-            (0, xyz[1], 0, 0),  # y
-            (0, 0, xyz[2], 0),  # z
-            (0, 0, 0, 1)
-        ))
+        self.put_scale(xyz)
 
         return xyz
 
@@ -563,9 +553,8 @@ if __name__ == '__main__':
     matrix: Matrix4x4 = Matrix4x4()
 
     matrix.put_position((0, 0, 0))
-    matrix.put_rotation((1, 1, 1), 0)
+    matrix.put_rotation((10, 10, 10), 0)
     matrix.put_scale((1, 1, 1))
 
-    print(matrix.rotation_matrix)
-
     matrix = matrix.translation_matrix @ matrix.rotation_matrix @ matrix.scale_matrix
+    matrix.get_rotation()
