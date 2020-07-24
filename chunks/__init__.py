@@ -1,1 +1,8 @@
-# Just skip this file, Github :)
+__all__ = [
+    'HEAD',
+    'MATE',
+    'GEOM',
+    'CAME',
+    'NODE',
+    'WEND'
+]

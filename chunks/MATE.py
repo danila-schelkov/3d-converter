@@ -98,5 +98,14 @@ class Decoder(Reader):
 
 
 class Encoder(Writer):
-    def __init__(self, info: dict):
+    def __init__(self, data: dict):
         super().__init__()
+        self.name = 'MATE'
+        self.data = data
+
+        self.encode()
+
+        self.length = len(self.buffer)
+
+    def encode(self):
+        pass

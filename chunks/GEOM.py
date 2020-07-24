@@ -67,7 +67,7 @@ class Decoder(Reader):
             weight_d = self.readUShort()
             temp_list = [[joint_a, weight_a], [joint_b, weight_b], [joint_c, weight_c], [joint_d, weight_d]]
             for pair in temp_list:
-                if pair[1] != 0:
+                if pair[0] != 0:
                     vcount[x] += 1
                     vertex_weights.append(pair[0])
                     if pair[1]/65535 not in weights:
