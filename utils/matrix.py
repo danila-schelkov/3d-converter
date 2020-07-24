@@ -547,14 +547,3 @@ class Matrix4x4(object):
         self.put_scale(xyz)
 
         return xyz
-
-
-if __name__ == '__main__':
-    matrix: Matrix4x4 = Matrix4x4()
-
-    matrix.put_position((0, 0, 0))
-    matrix.put_rotation((10, 10, 10), 0)
-    matrix.put_scale((1, 1, 1))
-
-    matrix = matrix.translation_matrix @ matrix.rotation_matrix @ matrix.scale_matrix
-    matrix.get_rotation()
