@@ -3,3 +3,4 @@ build.bat
 /dist/
 /build/
 /3d_converter.egg-info/
+/.idea/
