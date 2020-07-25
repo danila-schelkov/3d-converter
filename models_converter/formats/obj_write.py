@@ -15,9 +15,15 @@ class Writer:
             'NORMAL': 0
         }
 
-        vertices_offsets = temp_vertices_offsets
+        vertices_offsets = {
+            'POSITION': 0,
+            'TEXCOORD': 0,
+            'NORMAL': 0
+        }
 
         for geom in info:
+            for key in vertices_offsets.keys():
+                vertices_offsets[key] = temp_vertices_offsets[key]
             prefix = ''
 
             name = geom['name']
@@ -53,4 +59,3 @@ class Writer:
                         temp_string += '/'.join(temp_list) + ' '
                     self.writen += f'{temp_string}\n'
                 self.writen += '\n\n'
-            vertices_offsets = temp_vertices_offsets
