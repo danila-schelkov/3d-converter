@@ -8,8 +8,18 @@ def _(*args):
 class Writer:
     def __init__(self, info: list):
         self.writen = ''
+
+        temp_vertices_offsets = {
+            'POSITION': 0,
+            'TEXCOORD': 0,
+            'NORMAL': 0
+        }
+
+        vertices_offsets = temp_vertices_offsets
+
         for geom in info:
             prefix = ''
+
             name = geom['name']
             vertices = geom['vertices']
             materials = geom['materials']
@@ -20,6 +30,9 @@ class Writer:
                     prefix = 'vn '
                 elif vertex['type'] == 'TEXCOORD':
                     prefix = 'vt '
+
+                temp_vertices_offsets[vertex['type']] += len(vertex['vertex'])
+
                 for item in vertex['vertex']:
                     temp_string = prefix
                     for subitem in item:
@@ -31,9 +44,13 @@ class Writer:
                 for item in material['polygons']:
                     temp_string = 'f '
                     for subitem in item:
-                        temp_list = []
-                        for subitem_of_subitem in [subitem[0], subitem[2], subitem[1]]:
-                            temp_list.append(str(subitem_of_subitem + 1))
+                        temp_list = [
+                            str(subitem[0] + vertices_offsets['POSITION'] + 1),  # POSITION
+                            str(subitem[2] + vertices_offsets['TEXCOORD'] + 1),  # TEXCOORD
+                            str(subitem[1] + vertices_offsets['NORMAL'] + 1)  # NORMAL
+                        ]
+
                         temp_string += '/'.join(temp_list) + ' '
                     self.writen += f'{temp_string}\n'
                 self.writen += '\n\n'
+            vertices_offsets = temp_vertices_offsets

@@ -359,8 +359,6 @@ class Writer:
                 if node_data['frames'].index(frame) == 0:
                     SubElement(node, 'matrix', sid='transform').text = ' '.join(matrix_values)
 
-            # pprint(node_data)
-
         scene = SubElement(collada, 'scene')
         SubElement(scene, 'instance_visual_scene',
                    url='#3dConverterScene',
@@ -368,4 +366,4 @@ class Writer:
 
         # </Scene>
 
-        self.writen = tostring(collada, xml_declaration=True)
+        self.writen = tostring(collada, xml_declaration=True).decode()
