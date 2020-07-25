@@ -14,8 +14,8 @@ def _(*args):
 class Collada:
     def __init__(self):
         self.version = '1.4.1'
-        self.xmlns = 'http://www.collada.org/2005/11/COLLADASchema'
-        self.collada = Element('COLLADA', version=self.version, xmlns=self.xmlns)
+        self.xml_namespace = 'http://www.collada.org/2005/11/COLLADASchema'
+        self.collada = Element('COLLADA', version=self.version, xmlns=self.xml_namespace)
 
     @staticmethod
     def write_source(parent,
