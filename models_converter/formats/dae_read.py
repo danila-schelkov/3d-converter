@@ -1,8 +1,6 @@
-import json
 from xml.etree.ElementTree import *
 
-from formats.scw_write import Writer
-from utils.matrix import Matrix4x4
+from ..utils.matrix.matrix4x4 import Matrix4x4
 
 
 def _(*args):

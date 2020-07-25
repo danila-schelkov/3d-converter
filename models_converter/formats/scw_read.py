@@ -1,5 +1,5 @@
-from chunks import *
-from utils.reader import Reader
+from ..chunks import *
+from ..utils.reader import Reader
 
 
 def _(*args):

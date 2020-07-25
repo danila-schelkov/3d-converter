@@ -1,6 +1,6 @@
 import binascii
 
-from chunks import *
+from ..chunks import *
 
 
 def _(*args):
