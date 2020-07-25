@@ -5,27 +5,35 @@ def _(*args):
     print()
 
 
-class Reader:
+class Parser:
     def __init__(self, file_data: str):
+        # <Variables>
+
+        # <Vertices>
         vertex_temp, vertex = [], []
         normals_temp, normals = [], []
         texcoord_temp, texcoord = [], []
+        # </Vertices>
+
         polygons = []
+
+        # </Variables>
+
         for line in file_data.split('\n'):
             items = line.split()[1:]
-            if line.startswith('v '):
+            if line.startswith('v '):  # POSITION
                 temp_list = []
                 for item in items:
                     vertex_temp.append(float(item))
                     temp_list.append(float(item))
                 vertex.append(temp_list)
-            elif line.startswith('vn '):
+            elif line.startswith('vn '):  # NORMAL
                 temp_list = []
                 for item in items:
                     normals_temp.append(float(item))
                     temp_list.append(float(item))
                 normals.append(temp_list)
-            elif line.startswith('vt '):
+            elif line.startswith('vt '):  # TEXCOORD
                 if len(items) > 2:
                     items = items[:-1]
                 temp_list = []
@@ -59,13 +67,10 @@ class Reader:
         texcoord_scale = max(max(texcoord_temp), abs(min(texcoord_temp)))
         if texcoord_scale < 1:
             texcoord_scale = 1
-        self.readed = {'name': '',
+        self.parsed = {'name': '',
                        'group': '',
                        'vertices': [{'type': 'POSITION', 'index': 0, 'scale': vertex_scale, 'vertex': vertex},
                                     {'type': 'NORMAL', 'index': 1, 'scale': normals_scale, 'vertex': normals},
                                     {'type': 'TEXCOORD', 'index': 2, 'scale': texcoord_scale, 'vertex': texcoord}],
                        'have_bind_matrix': False,
                        'materials': [{'name': 'character_mat', 'polygons': polygons}]}
-
-    def get_readed(self):
-        return self.readed

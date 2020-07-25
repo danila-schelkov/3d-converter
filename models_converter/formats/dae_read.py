@@ -113,17 +113,17 @@ class Parser:
                 node_data['frames'] = []
 
             # node_data['frames'] = node['frames']
-            self.file_data['nodes'].append(node_data)
+            self.parsed['nodes'].append(node_data)
             self.fix_nodes_list(node['children'], node['name'])
 
     def __init__(self, file_data):
-        self.file_data = {'header': {'version': 2,
-                                     'frame_rate': 30,
-                                     'materials_file': 'sc3d/character_materials.scw'},
-                          'materials': [],
-                          'geometries': [],
-                          'cameras': [],
-                          'nodes': []}
+        self.parsed = {'header': {'version': 2,
+                                  'frame_rate': 30,
+                                  'materials_file': 'sc3d/character_materials.scw'},
+                       'materials': [],
+                       'geometries': [],
+                       'cameras': [],
+                       'nodes': []}
 
         self.geometry_info = {}
 
@@ -205,7 +205,7 @@ class Parser:
                         }
                     }
 
-                    self.file_data['materials'].append(material_data)
+                    self.parsed['materials'].append(material_data)
 
         instance_scene = root.find('./collada:scene', self.namespaces).find('collada:instance_visual_scene',
                                                                             self.namespaces)
@@ -216,7 +216,7 @@ class Parser:
         self.fix_nodes_list(nodes)
 
     def parse_nodes(self):
-        nodes = self.file_data['nodes']
+        nodes = self.parsed['nodes']
         for node in nodes:
             node: dict = node  # this line for fix "Expected type"
             if node['has_target']:
@@ -376,32 +376,4 @@ class Parser:
                 polygons.append(temp_list)
             self.geometry_info['materials'].append({'name': triangles_material,
                                                     'polygons': polygons})
-        self.file_data['geometries'].append(self.geometry_info)
-
-
-# NODES TEMPLATE
-# {'name': ...,
-#  'parent': ...,
-#  'has_target': False,
-#  'frames': [{'frame_id': 0,
-#              'rotation': {'x': ...,
-#                           'y': ...,
-#                           'z': ...,
-#                           'w': ...},
-#              'position': {'x': ...,
-#                           'y': ...,
-#                           'z': ...},
-#              'scale': {'x': ...,
-#                        'y': ...,
-#                        'z': ...},
-#              }]}
-
-
-if __name__ == '__main__':
-    parser = Parser(open('../8bit_geo.dae').read())
-    parser.parse_nodes()
-
-    json.dump(parser.file_data, open('../parsed_info.json', 'w'))
-
-    writer = Writer(parser.file_data)
-    open('../8bit_geo.scw', 'wb').write(writer.writen)
+        self.parsed['geometries'].append(self.geometry_info)

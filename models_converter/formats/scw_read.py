@@ -1,5 +1,3 @@
-import json
-
 from chunks import *
 from utils.reader import Reader
 
@@ -66,14 +64,3 @@ class Parser(Reader):
                 WEND.Decoder(chunk_data)
             else:
                 raise TypeError(f'Unknown chunk: {chunk_name}')
-
-
-if __name__ == '__main__':
-    with open('../8bit_geo.scw', 'rb') as file:
-        parser = Parser(file.read())
-        parser.split_chunks()
-        parser.parse()
-
-        json.dump(parser.readed, open('../parsed_info.json', 'w'))
-
-        file.close()

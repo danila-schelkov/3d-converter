@@ -79,7 +79,7 @@ class Writer:
         # <Copyright>
         contributor = SubElement(asset, 'contributor')
         SubElement(contributor, 'author').text = 'Vorono4ka'
-        SubElement(contributor, 'authoring_tool').text = '3d-converter (https://github.com/vorono4ka/3d-converter)'
+        SubElement(contributor, 'authoring_tool').text = 'models_converter (https://github.com/vorono4ka/3d-converter)'
 
         if 'version' in data['header']:
             SubElement(contributor, 'comments').text = 'SCW Version: ' + str(data['header']['version'])
@@ -370,12 +370,3 @@ class Writer:
         # </Scene>
 
         self.writen = tostring(collada, xml_declaration=True)
-
-
-if __name__ == '__main__':
-    json_data = json.load(open('../parsed_info.json'))
-    writer = Writer(json_data)
-
-    with open('../test_dae.dae', 'wb') as test_dae:
-        test_dae.write(writer.writen)
-        test_dae.close()
