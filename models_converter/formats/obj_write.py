@@ -6,7 +6,7 @@ def _(*args):
 
 
 class Writer:
-    def __init__(self, info: list):
+    def __init__(self, data: dict):
         self.writen = ''
 
         temp_vertices_offsets = {
@@ -21,7 +21,7 @@ class Writer:
             'NORMAL': 0
         }
 
-        for geom in info:
+        for geom in data['geometries']:
             for key in vertices_offsets.keys():
                 vertices_offsets[key] = temp_vertices_offsets[key]
             prefix = ''

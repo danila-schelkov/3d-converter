@@ -199,7 +199,13 @@ class Encoder(Writer):
             # Calculate settings
             inputs_count = len(material['polygons'][0][0])
 
-            maximal_value = max(max(max(material['polygons'])))
+            maximal_value = 0
+            for points in material['polygons']:
+                for point in points:
+                    for vertex in point:
+                        if vertex > maximal_value:
+                            maximal_value = vertex
+
             short_length = 1 if maximal_value <= 255 else 2
 
             # Write Settings
@@ -208,12 +214,12 @@ class Encoder(Writer):
 
             # Write Polygons
             if short_length == 2:
-                for x in material['polygons']:
-                    for x1 in x:
-                        for x2 in x1:
-                            self.writeShort(x2)
+                for points in material['polygons']:
+                    for point in points:
+                        for vertex in point:
+                            self.writeUShort(vertex)
             elif short_length == 1:
-                for x in material['polygons']:
-                    for x1 in x:
-                        for x2 in x1:
-                            self.writeByte(x2)
+                for points in material['polygons']:
+                    for point in points:
+                        for vertex in point:
+                            self.writeUByte(vertex)

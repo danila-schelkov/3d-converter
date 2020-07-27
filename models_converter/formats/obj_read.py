@@ -9,38 +9,53 @@ class Parser:
     def __init__(self, file_data: str):
         # <Variables>
 
+        self.parsed = {'header': {'version': 2,
+                                  'frame_rate': 30,
+                                  'materials_file': 'sc3d/character_materials.scw'},
+                       'materials': [],
+                       'geometries': [],
+                       'cameras': [],
+                       'nodes': []}
+
+        self.lines = file_data.split('\n')
+
         # <Vertices>
-        vertex_temp, vertex = [], []
-        normals_temp, normals = [], []
-        texcoord_temp, texcoord = [], []
+        self.position_temp, self.position = [], []
+        self.normals_temp, self.normals = [], []
+        self.texcoord_temp, self.texcoord = [], []
         # </Vertices>
 
-        polygons = []
+        self.polygons = []
 
         # </Variables>
 
-        for line in file_data.split('\n'):
+        self.parse()
+
+    def parse(self):
+        geometry_name = 'This model haven\'t a name!:( Its VERY SAD!'
+        is_first_name = True
+        for line in self.lines:
             items = line.split()[1:]
             if line.startswith('v '):  # POSITION
                 temp_list = []
                 for item in items:
-                    vertex_temp.append(float(item))
+                    self.position_temp.append(float(item))
                     temp_list.append(float(item))
-                vertex.append(temp_list)
+                self.position.append(temp_list)
             elif line.startswith('vn '):  # NORMAL
                 temp_list = []
                 for item in items:
-                    normals_temp.append(float(item))
+                    self.normals_temp.append(float(item))
                     temp_list.append(float(item))
-                normals.append(temp_list)
+                self.normals.append(temp_list)
             elif line.startswith('vt '):  # TEXCOORD
                 if len(items) > 2:
                     items = items[:-1]
                 temp_list = []
                 for item in items:
-                    texcoord_temp.append(float(item))
+                    self.texcoord_temp.append(float(item))
                     temp_list.append(float(item))
-                texcoord.append(temp_list)
+                self.texcoord.append(temp_list)
             elif line.startswith('f '):
                 temp_list = []
                 if len(items) > 3:
@@ -55,22 +70,61 @@ class Parser:
                         _('Model have not normals and texture')
                         break
                     for x in item.split('/'):
-                        second_temp_list.append(int(x)-1)
+                        second_temp_list.append(int(x) - 1)
                     temp_list.append([second_temp_list[0], second_temp_list[2], second_temp_list[1]])
-                polygons.append(temp_list)
-        vertex_scale = max(max(vertex_temp), abs(min(vertex_temp)))
+                self.polygons.append(temp_list)
+            elif line.startswith('o '):
+                # if not is_first_name:
+                #     position_scale = self.get_vertex_scale(self.position_temp)
+                #     normals_scale = self.get_vertex_scale(self.normals_temp)
+                #     texcoord_scale = self.get_vertex_scale(self.texcoord_temp)
+                #
+                #     self.parsed['geometries'].append({
+                #         'name': geometry_name,
+                #         'group': '',
+                #         'vertices': [
+                #             {'type': 'POSITION', 'index': 0, 'scale': position_scale, 'vertex': self.position},
+                #             {'type': 'NORMAL', 'index': 1, 'scale': normals_scale, 'vertex': self.normals},
+                #             {'type': 'TEXCOORD', 'index': 2, 'scale': texcoord_scale, 'vertex': self.texcoord}
+                #         ],
+                #         'have_bind_matrix': False,
+                #         'materials': [{'name': 'character_mat', 'polygons': self.polygons}]
+                #     })
+                #
+                #     # <VariablesReset>
+                #
+                #     # <Vertices>
+                #     self.position_temp, self.position = [], []
+                #     self.normals_temp, self.normals = [], []
+                #     self.texcoord_temp, self.texcoord = [], []
+                #     # </Vertices>
+                #
+                #     self.polygons = []
+                #
+                #     # </VariablesReset>
+                # geometry_name = line.split('o ')[0]
+                if is_first_name:
+                    geometry_name = line.split('o ')[0]
+
+        position_scale = self.get_vertex_scale(self.position_temp)
+        normals_scale = self.get_vertex_scale(self.normals_temp)
+        texcoord_scale = self.get_vertex_scale(self.texcoord_temp)
+
+        self.parsed['geometries'].append({
+            'name': geometry_name,
+            'group': '',
+            'vertices': [
+                {'type': 'POSITION', 'index': 0, 'scale': position_scale, 'vertex': self.position},
+                {'type': 'NORMAL', 'index': 1, 'scale': normals_scale, 'vertex': self.normals},
+                {'type': 'TEXCOORD', 'index': 2, 'scale': texcoord_scale, 'vertex': self.texcoord}
+            ],
+            'have_bind_matrix': False,
+            'materials': [{'name': 'character_mat', 'polygons': self.polygons}]
+        })
+
+    @staticmethod
+    def get_vertex_scale(vertex_data: list):
+        vertex_scale = max(max(vertex_data), abs(min(vertex_data)))
         if vertex_scale < 1:
             vertex_scale = 1
-        normals_scale = max(max(normals_temp), abs(min(normals_temp)))
-        if normals_scale < 1:
-            normals_scale = 1
-        texcoord_scale = max(max(texcoord_temp), abs(min(texcoord_temp)))
-        if texcoord_scale < 1:
-            texcoord_scale = 1
-        self.parsed = {'name': '',
-                       'group': '',
-                       'vertices': [{'type': 'POSITION', 'index': 0, 'scale': vertex_scale, 'vertex': vertex},
-                                    {'type': 'NORMAL', 'index': 1, 'scale': normals_scale, 'vertex': normals},
-                                    {'type': 'TEXCOORD', 'index': 2, 'scale': texcoord_scale, 'vertex': texcoord}],
-                       'have_bind_matrix': False,
-                       'materials': [{'name': 'character_mat', 'polygons': polygons}]}
+        return vertex_scale
