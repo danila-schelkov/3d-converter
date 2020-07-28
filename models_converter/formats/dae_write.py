@@ -206,8 +206,10 @@ class Writer:
                     vertex_index = geometry_data['vertices'].index(vertex)
                     vertex_type = vertex['type']
 
-                    source_id = f'{geometry_name}-{vertex_type.lower()}'
                     if vertex_type == 'POSITION':
+                        vertex_type = 'VERTEX'
+                    source_id = f'{geometry_name}-{vertex_type.lower()}'
+                    if vertex_type == 'VERTEX':
                         source_id = f'{geometry_name}-vertices'
 
                     dae.write_input(triangles, vertex_type, source_id, vertex_index)
