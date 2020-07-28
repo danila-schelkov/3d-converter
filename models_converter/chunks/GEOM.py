@@ -19,7 +19,7 @@ class Decoder(Reader):
 
         name = self.readString()
         group = self.readString()
-        if header['version'] == 1:
+        if header['version'] < 2:
             matrix = []
             for x in range(4):
                 temp_list = []

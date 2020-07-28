@@ -15,7 +15,8 @@ class Decoder(Reader):
         self.readUShort()
         self.readUShort()
         materials_file = self.readString()
-        self.readUByte()
+        if version == 2:
+            self.readUByte()
 
         self.readed['version'] = version
         self.readed['frame_rate'] = frame_rate

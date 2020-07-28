@@ -126,14 +126,12 @@ class Parser:
         self.geometry_info = {}
 
         root = fromstring(file_data)
-        # tree = parse(file_path)
-        # root = tree.getroot()
 
         self.namespaces = {
             'collada': 'http://www.collada.org/2005/11/COLLADASchema'
         }
 
-        # Libraries
+        # <Libraries>
         self.library_materials = root.find('./collada:library_materials', self.namespaces)
         self.library_effects = root.find('./collada:library_effects', self.namespaces)
 
@@ -141,7 +139,7 @@ class Parser:
         self.library_controllers = root.find('./collada:library_controllers', self.namespaces)
 
         library_scenes = root.find('./collada:library_visual_scenes', self.namespaces)
-        # Libraries
+        # </Libraries>
 
         for material in self.library_materials:
             material_name = material.attrib['id']
@@ -215,8 +213,8 @@ class Parser:
 
     def parse_nodes(self):
         nodes = self.parsed['nodes']
-        for node in nodes:
-            node: dict = node  # this line for fix "Expected type"
+        for node_index in range(len(nodes)):
+            node = nodes[node_index]
             if node['has_target']:
                 controller = None
                 geometry = None
@@ -231,6 +229,13 @@ class Parser:
                 elif node['target_type'] == 'GEOM':
                     geometry = self.library_geometries \
                         .find(f'collada:geometry[@id="{node["target"]}"]', self.namespaces)
+
+                if node['target'].endswith('-cont'):
+                    node['target'] = node['target'][:-5]
+                if node['target'].endswith('-geom'):
+                    node['target'] = node['target'][:-5]
+
+                self.parsed['nodes'][node_index] = node
 
                 if geometry is not None:
                     self.geometry_info = {'name': '',

@@ -87,9 +87,11 @@ class Writer:
         # <Materials>
         for material_data in data['materials']:
             material_name = material_data['name']
-            effect_name = f'{material_name}-effect'
 
-            material = SubElement(library_materials, 'material', id=material_name)
+            SubElement(library_materials, 'material', id=material_name)
+            # effect_name = f'{material_name}-effect'
+            #
+            # material = SubElement(library_materials, 'material', id=material_name)
             # SubElement(material, 'instance_effect', url=f'#{effect_name}')
             #
             # effect = SubElement(library_effects, 'effect', id=effect_name)
@@ -151,9 +153,12 @@ class Writer:
                 vertex = vertex_data['vertex']
                 stride = len(vertex[0])
 
+                if vertex_type == 'VERTEX':
+                    vertex_type = 'POSITION'
+
                 source_name = f'{geometry_name}-{vertex_type.lower()}'
 
-                if vertex_type in ['VERTEX', 'POSITION', 'NORMAL']:
+                if vertex_type in ['POSITION', 'NORMAL']:
                     params.append({
                         'name': 'X',
                         'type': 'float'
@@ -201,20 +206,18 @@ class Writer:
                     vertex_index = geometry_data['vertices'].index(vertex)
                     vertex_type = vertex['type']
 
-                    if vertex_type == 'POSITION':
-                        vertex_type = 'VERTEX'
                     source_id = f'{geometry_name}-{vertex_type.lower()}'
-                    if vertex_type == 'VERTEX':
+                    if vertex_type == 'POSITION':
                         source_id = f'{geometry_name}-vertices'
 
                     dae.write_input(triangles, vertex_type, source_id, vertex_index)
                 polygons = SubElement(triangles, 'p')
 
                 formatted_polygons_data = []
-                for item in polygons_data:
-                    for sub_item in item:
-                        for value in sub_item:
-                            formatted_polygons_data.append(str(value))
+                for polygon in polygons_data:
+                    for point in polygon:
+                        for vertex in point:
+                            formatted_polygons_data.append(str(vertex))
 
                 polygons.text = ' '.join(formatted_polygons_data)
             # </Polygons>
