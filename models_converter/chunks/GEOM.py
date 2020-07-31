@@ -34,6 +34,10 @@ class Decoder(Reader):
             vertex_shorts = self.readUShort()
             vertex_scale = self.readFloat()
             vertex_count = self.readUInt32()
+
+            if vertex_type == 'VERTEX':
+                vertex_type = 'POSITION'
+
             for x1 in range(vertex_count):
                 coordinates_massive = []
                 for x2 in range(vertex_shorts):
@@ -42,6 +46,7 @@ class Decoder(Reader):
                 if vertex_type == 'TEXCOORD':
                     coordinates_massive[1::2] = [1-x for x in coordinates_massive[1::2]]
                 vertex.append(coordinates_massive)
+
             vertices.append({'type': vertex_type, 'index': vertex_index, 'scale': vertex_scale, 'vertex': vertex})
         have_bind_matrix = self.readBool()
         if have_bind_matrix:
@@ -144,7 +149,7 @@ class Encoder(Writer):
                 if vertex['type'] == 'TEXCOORD':
                     coordinates_massive[1::2] = [1 - x for x in coordinates_massive[1::2]]
                 for coordinate in coordinates_massive:
-                    coordinate /= vertex['scale']
+                    # coordinate /= vertex['scale']
                     coordinate *= 32512
                     self.writeShort(round(coordinate))
 
@@ -213,13 +218,7 @@ class Encoder(Writer):
             self.writeUByte(short_length)
 
             # Write Polygons
-            if short_length == 2:
-                for points in material['polygons']:
-                    for point in points:
-                        for vertex in point:
-                            self.writeUShort(vertex)
-            elif short_length == 1:
-                for points in material['polygons']:
-                    for point in points:
-                        for vertex in point:
-                            self.writeUByte(vertex)
+            for points in material['polygons']:
+                for point in points:
+                    for vertex in point:
+                        self.writeUInteger(vertex, short_length)

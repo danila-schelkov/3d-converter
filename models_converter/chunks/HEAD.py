@@ -34,7 +34,7 @@ class Encoder(Writer):
         self.length = len(self.buffer)
 
     def encode(self):
-        self.writeUShort(self.data['version'])  # version
+        self.writeUShort(2)  # version  # self.data['version']
         self.writeUShort(self.data['frame_rate'])  # frame rate
         self.writeUShort(0)
         self.writeUShort(249)

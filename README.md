@@ -1,6 +1,6 @@
 ## `Python 3D Models Converter`
 
-**Version**: 0.4.5
+**Version**: 0.5.0
 
 ### **Tools:** 
 - scw2dae

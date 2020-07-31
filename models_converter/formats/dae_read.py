@@ -353,6 +353,7 @@ class Parser:
                 scale = 1
             if semantic == 'TEXCOORD':
                 vertex_temp[1::2] = [1 - x for x in vertex_temp[1::2]]
+            vertex_temp = [value / scale for value in vertex_temp]
 
             vertex = []
             for x in range(0, len(vertex_temp), len(accessor)):

@@ -37,25 +37,16 @@ class Parser:
         for line in self.lines:
             items = line.split()[1:]
             if line.startswith('v '):  # POSITION
-                temp_list = []
                 for item in items:
                     self.position_temp.append(float(item))
-                    temp_list.append(float(item))
-                self.position.append(temp_list)
             elif line.startswith('vn '):  # NORMAL
-                temp_list = []
                 for item in items:
                     self.normals_temp.append(float(item))
-                    temp_list.append(float(item))
-                self.normals.append(temp_list)
             elif line.startswith('vt '):  # TEXCOORD
                 if len(items) > 2:
                     items = items[:-1]
-                temp_list = []
                 for item in items:
                     self.texcoord_temp.append(float(item))
-                    temp_list.append(float(item))
-                self.texcoord.append(temp_list)
             elif line.startswith('f '):
                 temp_list = []
                 if len(items) > 3:
@@ -109,6 +100,15 @@ class Parser:
         position_scale = self.get_vertex_scale(self.position_temp)
         normals_scale = self.get_vertex_scale(self.normals_temp)
         texcoord_scale = self.get_vertex_scale(self.texcoord_temp)
+
+        for x in range(0, len(self.position_temp), 3):
+            self.position.append(self.position_temp[x: x + 3])
+
+        for x in range(0, len(self.normals_temp), 3):
+            self.normals.append(self.normals_temp[x: x + 3])
+
+        for x in range(0, len(self.texcoord_temp), 2):
+            self.texcoord.append(self.texcoord_temp[x: x + 2])
 
         self.parsed['geometries'].append({
             'name': geometry_name,

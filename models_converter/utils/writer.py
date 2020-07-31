@@ -37,10 +37,10 @@ class Writer:
         self.buffer += pack('>?', boolean)
 
     def writeUInteger(self, integer: int, length: int = 1):
-        return integer.to_bytes(length, 'big', signed=False)
+        self.buffer += integer.to_bytes(length, 'big', signed=False)
 
     def writeInteger(self, integer: int, length: int = 1):
-        return integer.to_bytes(length, 'big', signed=True)
+        self.buffer += integer.to_bytes(length, 'big', signed=True)
 
     writeULong = writeUInt64
     writeLong = writeInt64
