@@ -89,51 +89,51 @@ class Writer:
             material_name = material_data['name']
 
             SubElement(library_materials, 'material', id=material_name)
-            # effect_name = f'{material_name}-effect'
-            #
-            # material = SubElement(library_materials, 'material', id=material_name)
-            # SubElement(material, 'instance_effect', url=f'#{effect_name}')
-            #
-            # effect = SubElement(library_effects, 'effect', id=effect_name)
-            # profile = SubElement(effect, 'profile_COMMON')
-            # technique = SubElement(profile, 'technique', sid='common')
-            #
-            # ambient_data = material_data['effect']['ambient']
-            # diffuse_data = material_data['effect']['diffuse']
-            # emission_data = material_data['effect']['emission']
-            # specular_data = material_data['effect']['specular']
-            #
-            # phong = SubElement(technique, 'phong')
-            #
-            # ambient = SubElement(phong, 'ambient')
-            # if type(ambient_data) is list:
-            #     ambient_data[3] /= 255
-            #     ambient_data = [str(item) for item in ambient_data]
-            #     SubElement(ambient, 'color').text = ' '.join(ambient_data)
+            effect_name = f'{material_name}-effect'
+
+            material = SubElement(library_materials, 'material', id=material_name)
+            SubElement(material, 'instance_effect', url=f'#{effect_name}')
+
+            effect = SubElement(library_effects, 'effect', id=effect_name)
+            profile = SubElement(effect, 'profile_COMMON')
+            technique = SubElement(profile, 'technique', sid='common')
+
+            ambient_data = material_data['effect']['ambient']
+            diffuse_data = material_data['effect']['diffuse']
+            emission_data = material_data['effect']['emission']
+            specular_data = material_data['effect']['specular']
+
+            phong = SubElement(technique, 'phong')
+
+            if type(ambient_data) is list:
+                ambient = SubElement(phong, 'ambient')
+                ambient_data[3] /= 255
+                ambient_data = [str(item) for item in ambient_data]
+                SubElement(ambient, 'color').text = ' '.join(ambient_data)
             # else:
             #     SubElement(ambient, 'texture', texture=ambient_data, texcoord='CHANNEL0')
-            #
-            # diffuse = SubElement(phong, 'diffuse')
-            # if type(diffuse_data) is list:
-            #     diffuse_data[3] /= 255
-            #     diffuse_data = [str(item) for item in diffuse_data]
-            #     SubElement(diffuse, 'color').text = ' '.join(diffuse_data)
+
+            if type(diffuse_data) is list:
+                diffuse = SubElement(phong, 'diffuse')
+                diffuse_data[3] /= 255
+                diffuse_data = [str(item) for item in diffuse_data]
+                SubElement(diffuse, 'color').text = ' '.join(diffuse_data)
             # else:
             #     SubElement(diffuse, 'texture', texture=diffuse_data, texcoord='CHANNEL0')
-            #
-            # emission = SubElement(phong, 'emission')
-            # if type(emission_data) is list:
-            #     emission_data[3] /= 255
-            #     emission_data = [str(item) for item in emission_data]
-            #     SubElement(emission, 'color').text = ' '.join(emission_data)
+
+            if type(emission_data) is list:
+                emission = SubElement(phong, 'emission')
+                emission_data[3] /= 255
+                emission_data = [str(item) for item in emission_data]
+                SubElement(emission, 'color').text = ' '.join(emission_data)
             # else:
             #     SubElement(emission, 'texture', texture=emission_data, texcoord='CHANNEL0')
-            #
-            # specular = SubElement(phong, 'specular')
-            # if type(specular_data) is list:
-            #     specular_data[3] /= 255
-            #     specular_data = [str(item) for item in specular_data]
-            #     SubElement(specular, 'color').text = ' '.join(specular_data)
+
+            if type(specular_data) is list:
+                specular = SubElement(phong, 'specular')
+                specular_data[3] /= 255
+                specular_data = [str(item) for item in specular_data]
+                SubElement(specular, 'color').text = ' '.join(specular_data)
             # else:
             #     SubElement(specular, 'texture', texture=specular_data, texcoord='CHANNEL0')
         # </Materials>
@@ -159,27 +159,12 @@ class Writer:
                 source_name = f'{geometry_name}-{vertex_type.lower()}'
 
                 if vertex_type in ['POSITION', 'NORMAL']:
-                    params.append({
-                        'name': 'X',
-                        'type': 'float'
-                    })
-                    params.append({
-                        'name': 'Y',
-                        'type': 'float'
-                    })
-                    params.append({
-                        'name': 'Z',
-                        'type': 'float'
-                    })
+                    params.append({'name': 'X', 'type': 'float'})
+                    params.append({'name': 'Y', 'type': 'float'})
+                    params.append({'name': 'Z', 'type': 'float'})
                 elif vertex_type in ['TEXCOORD']:
-                    params.append({
-                        'name': 'S',
-                        'type': 'float'
-                    })
-                    params.append({
-                        'name': 'T',
-                        'type': 'float'
-                    })
+                    params.append({'name': 'S', 'type': 'float'})
+                    params.append({'name': 'T', 'type': 'float'})
 
                 dae.write_source(
                     mesh,
@@ -251,10 +236,7 @@ class Writer:
                     'Name_array',
                     joints_names,
                     1,
-                    [{
-                        'name': 'JOINT',
-                        'type': 'name'
-                    }]
+                    [{'name': 'JOINT', 'type': 'name'}]
                 )
 
                 dae.write_source(
@@ -263,10 +245,7 @@ class Writer:
                     'float_array',
                     joints_matrices,
                     16,
-                    [{
-                        'name': 'TRANSFORM',
-                        'type': 'float4x4'
-                    }]
+                    [{'name': 'TRANSFORM', 'type': 'float4x4'}]
                 )
 
                 dae.write_source(
@@ -275,10 +254,7 @@ class Writer:
                     'float_array',
                     [str(value) for value in geometry_data['weights']['weights']],
                     1,
-                    [{
-                        'name': 'WEIGHT',
-                        'type': 'float'
-                    }]
+                    [{'name': 'WEIGHT', 'type': 'float'}]
                 )
 
                 joints = SubElement(skin, 'joints')
@@ -341,7 +317,7 @@ class Writer:
 
             frames = node_data['frames']
             for frame in frames:
-                frame_id = frame['id']
+                frame_id = frame['frame_id']
                 matrix = Matrix4x4()
 
                 time_input.append(str(frame_id/frame_rate))
@@ -365,7 +341,7 @@ class Writer:
                 else:
                     matrix_output.append(' '.join(matrix_values))
 
-            if len(node_data['frames']) > 1:
+            if len(frames) > 1:
                 animation = SubElement(library_animations, 'animation', id=node_name)
 
                 dae.write_source(
@@ -417,11 +393,11 @@ class Writer:
                            source=f'#{node_name}-sampler',
                            target=f'{node_name}/transform')
 
-            scene = SubElement(collada, 'scene')
-            SubElement(scene, 'instance_visual_scene',
-                       url='#3dConverterScene',
-                       name='3d-Converter Scene')
+        scene = SubElement(collada, 'scene')
+        SubElement(scene, 'instance_visual_scene',
+                   url='#3dConverterScene',
+                   name='3d-Converter Scene')
 
-            # </Scene>
+        # </Scene>
 
-            self.writen = tostring(collada, xml_declaration=True).decode()
+        self.writen = tostring(collada, xml_declaration=True).decode()
