@@ -310,6 +310,7 @@ class Writer:
                 parent = visual_scene.find(f'.//*[@id="{parent_name}"]')
                 if parent is None:
                     parent = visual_scene
+            node_name = node_data['name']
 
             node = SubElement(parent, 'node', id=node_data['name'])
 
@@ -332,24 +333,22 @@ class Writer:
                 if parent_name != '':
                     node.attrib['type'] = 'JOINT'
 
-            for frame in node_data['frames']:
+            # <AnimationVariables>
+            frame_rate = data['header']['frame_rate']
+            time_input = []
+            matrix_output = []
+            # </AnimationVariables>
+
+            frames = node_data['frames']
+            for frame in frames:
+                frame_id = frame['id']
                 matrix = Matrix4x4()
 
-                position_xyz = (
-                    frame['position']['x'],
-                    frame['position']['y'],
-                    frame['position']['z']
-                )
-                rotation_xyz = (
-                    frame['rotation']['x'],
-                    frame['rotation']['y'],
-                    frame['rotation']['z']
-                )
-                scale_xyz = (
-                    frame['scale']['x'],
-                    frame['scale']['y'],
-                    frame['scale']['z']
-                )
+                time_input.append(str(frame_id/frame_rate))
+
+                position_xyz = (frame['position']['x'], frame['position']['y'], frame['position']['z'])
+                rotation_xyz = (frame['rotation']['x'], frame['rotation']['y'], frame['rotation']['z'])
+                scale_xyz = (frame['scale']['x'], frame['scale']['y'], frame['scale']['z'])
 
                 matrix.put_rotation(rotation_xyz, frame['rotation']['w'])
                 matrix.put_position(position_xyz)
@@ -363,12 +362,66 @@ class Writer:
 
                 if node_data['frames'].index(frame) == 0:
                     SubElement(node, 'matrix', sid='transform').text = ' '.join(matrix_values)
+                else:
+                    matrix_output.append(' '.join(matrix_values))
 
-        scene = SubElement(collada, 'scene')
-        SubElement(scene, 'instance_visual_scene',
-                   url='#3dConverterScene',
-                   name='3d-Converter Scene')
+            if len(node_data['frames']) > 1:
+                animation = SubElement(library_animations, 'animation', id=node_name)
 
-        # </Scene>
+                dae.write_source(
+                    animation,
+                    f'{node_name}-time-input',
+                    'float_array',
+                    time_input,
+                    1,
+                    [{'name': 'TIME', 'type': 'float'}]
+                )
+                dae.write_source(
+                    animation,
+                    f'{node_name}-matrix-output',
+                    'float_array',
+                    matrix_output,
+                    16,
+                    [{'name': 'TRANSFORM', 'type': 'float4x4'}]
+                )
+                dae.write_source(
+                    animation,
+                    f'{node_name}-interpolation',
+                    'Name_array',
+                    ['LINEAR' for x in range(len(frames))],
+                    1,
+                    [{'name': 'INTERPOLATION', 'type': 'name'}]
+                )
 
-        self.writen = tostring(collada, xml_declaration=True).decode()
+                sampler = SubElement(animation, 'sampler', id=f'{node_name}-sampler')
+
+                dae.write_input(
+                    sampler,
+                    'INPUT',
+                    f'{node_name}-time-input'
+                )
+
+                dae.write_input(
+                    sampler,
+                    'OUTPUT',
+                    f'{node_name}-matrix-output'
+                )
+
+                dae.write_input(
+                    sampler,
+                    'INTERPOLATION',
+                    f'{node_name}-interpolation'
+                )
+
+                SubElement(animation, 'channel',
+                           source=f'#{node_name}-sampler',
+                           target=f'{node_name}/transform')
+
+            scene = SubElement(collada, 'scene')
+            SubElement(scene, 'instance_visual_scene',
+                       url='#3dConverterScene',
+                       name='3d-Converter Scene')
+
+            # </Scene>
+
+            self.writen = tostring(collada, xml_declaration=True).decode()
