@@ -7,7 +7,7 @@ class Decoder(Reader):
         super().__init__(initial_bytes)
 
         # Variables
-        self.readed = {}
+        self.parsed = {}
         # Variables
 
         version = self.readUShort()
@@ -18,9 +18,9 @@ class Decoder(Reader):
         if version == 2:
             self.readUByte()
 
-        self.readed['version'] = version
-        self.readed['frame_rate'] = frame_rate
-        self.readed['materials_file'] = materials_file
+        self.parsed['version'] = version
+        self.parsed['frame_rate'] = frame_rate
+        self.parsed['materials_file'] = materials_file
 
 
 class Encoder(Writer):

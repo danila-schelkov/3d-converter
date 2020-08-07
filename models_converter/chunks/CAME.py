@@ -6,7 +6,7 @@ class Decoder(Reader):
     def __init__(self, initial_bytes: bytes, header: dict):
         super().__init__(initial_bytes)
 
-        self.readed = {}
+        self.parsed = {}
 
 
 class Encoder(Writer):

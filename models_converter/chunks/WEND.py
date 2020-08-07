@@ -7,7 +7,7 @@ class Decoder(Reader):
         super().__init__(initial_bytes)
 
         # Variables
-        self.readed = {}
+        self.parsed = {}
         # Variables
 
 

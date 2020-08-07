@@ -150,13 +150,14 @@ class Writer:
                 params = []
 
                 vertex_type = vertex_data['type']
+                vertex_name = vertex_data['name']
                 vertex = vertex_data['vertex']
                 stride = len(vertex[0])
 
                 if vertex_type == 'VERTEX':
                     vertex_type = 'POSITION'
 
-                source_name = f'{geometry_name}-{vertex_type.lower()}'
+                source_name = f'{geometry_name}-{vertex_name}'
 
                 if vertex_type in ['POSITION', 'NORMAL']:
                     params.append({'name': 'X', 'type': 'float'})
@@ -174,10 +175,11 @@ class Writer:
                     stride,
                     params
                 )
-            # </Vertices>
 
-            vertices = SubElement(mesh, 'vertices', id=f'{geometry_name}-vertices')
-            dae.write_input(vertices, 'POSITION', f'{geometry_name}-position')
+                if vertex_type == 'POSITION':
+                    vertices = SubElement(mesh, 'vertices', id=f'{source_name}-vertices')
+                    dae.write_input(vertices, 'POSITION', source_name)
+            # </Vertices>
 
             # <Polygons>
             for material in geometry_data['materials']:
@@ -187,17 +189,18 @@ class Writer:
                 triangles = SubElement(mesh, 'triangles',
                                        count=f'{len(polygons_data)}',
                                        material=material_name)
-                for vertex in geometry_data['vertices']:
-                    vertex_index = geometry_data['vertices'].index(vertex)
-                    vertex_type = vertex['type']
+                for _input in material['inputs']:
+                    input_offset = _input['offset']
+                    input_name = _input['name']
+                    input_type = _input['type']
 
-                    if vertex_type == 'POSITION':
-                        vertex_type = 'VERTEX'
-                    source_id = f'{geometry_name}-{vertex_type.lower()}'
-                    if vertex_type == 'VERTEX':
-                        source_id = f'{geometry_name}-vertices'
+                    if input_type == 'POSITION':
+                        input_type = 'VERTEX'
+                    source_id = f'{geometry_name}-{input_name}'
+                    if input_type == 'VERTEX':
+                        source_id = f'{source_id}-vertices'
 
-                    dae.write_input(triangles, vertex_type, source_id, vertex_index)
+                    dae.write_input(triangles, input_type, source_id, input_offset)
                 polygons = SubElement(triangles, 'p')
 
                 formatted_polygons_data = []
@@ -217,8 +220,9 @@ class Writer:
                 controller = SubElement(library_controllers, 'controller', id=f'{geometry_name}-cont')
                 skin = SubElement(controller, 'skin', source=f'#{geometry_name}-geom')
 
-                bind_matrix_data = [str(value) for value in geometry_data['bind_matrix']]
-                SubElement(skin, 'bind_shape_matrix').text = ' '.join(bind_matrix_data)
+                if 'bind_matrix' in geometry_data:
+                    bind_matrix_data = [str(value) for value in geometry_data['bind_matrix']]
+                    SubElement(skin, 'bind_shape_matrix').text = ' '.join(bind_matrix_data)
 
                 for joint in geometry_data['joints']:
                     joints_names.append(joint['name'])
@@ -305,8 +309,19 @@ class Writer:
                         SubElement(technique_common, 'instance_material',
                                    symbol=symbol,
                                    target=f'#{target}')
+                elif target_type == 'GEOM':
+                    instance_controller = SubElement(node, 'instance_geometry', url=f'#{target_id}-geom')
+                    bind_material = SubElement(instance_controller, 'bind_material')
+                    technique_common = SubElement(bind_material, 'technique_common')
+                    for bind in node_data['binds']:
+                        symbol = bind['symbol']
+                        target = bind['target']
+
+                        SubElement(technique_common, 'instance_material',
+                                   symbol=symbol,
+                                   target=f'#{target}')
             else:
-                if parent_name != '':
+                if parent_name is not None:
                     node.attrib['type'] = 'JOINT'
 
             # <AnimationVariables>

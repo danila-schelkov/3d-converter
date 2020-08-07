@@ -1,6 +1,7 @@
 from xml.etree.ElementTree import *
 
-from ..utils.matrix.matrix4x4 import Matrix4x4
+from models_converter.formats.scw_write import Writer
+# from ..utils.matrix.matrix4x4 import Matrix4x4
 
 
 def _(*args):
@@ -94,16 +95,16 @@ class Parser:
                 node_data['frames'] = []
 
                 if 'matrix' in node:
-                    matrix = Matrix4x4(node['matrix'])
-
-                    scale = matrix.get_scale()
-                    position = matrix.get_position()
-
+                    # matrix = Matrix4x4(node['matrix'])
+                    #
+                    # scale = matrix.get_scale()
+                    # position = matrix.get_position()
+                    #
                     frame_data = {
                         'frame_id': 0,
                         'rotation': {'x': 0, 'y': 0, 'z': 0, 'w': 0},
-                        'position': {'x': position[0], 'y': position[1], 'z': position[2]},
-                        'scale': {'x': scale[0], 'y': scale[1], 'z': scale[2]}
+                        'position': {'x': 0, 'y': 0, 'z': 0},
+                        'scale': {'x': 1, 'y': 1, 'z': 1}
                     }
 
                     node_data['frames'].append(frame_data)
@@ -381,3 +382,16 @@ class Parser:
             self.geometry_info['materials'].append({'name': triangles_material,
                                                     'polygons': polygons})
         self.parsed['geometries'].append(self.geometry_info)
+
+
+if __name__ == '__main__':
+    with open('../crow_geo.dae') as fh:
+        file_data = fh.read()
+        fh.close()
+    parser = Parser(file_data)
+    parser.parse_nodes()
+
+    writer = Writer(parser.parsed)
+    with open('../crow_geo.scw', 'wb') as fh:
+        fh.write(writer.writen)
+        fh.close()

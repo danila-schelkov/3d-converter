@@ -7,13 +7,15 @@ class Decoder(Reader):
         super().__init__(initial_bytes)
 
         # Variables
-        self.readed = {}
+        self.parsed = {}
+
         vertices = []
         bind_matrix = []
         joints = []
         vertex_weights = []
         weights = []
         vcount = []
+        inputs = []
         materials = []
         # Variables
 
@@ -47,7 +49,19 @@ class Decoder(Reader):
                     coordinates_massive[1::2] = [1-x for x in coordinates_massive[1::2]]
                 vertex.append(coordinates_massive)
 
-            vertices.append({'type': vertex_type, 'index': vertex_index, 'scale': vertex_scale, 'vertex': vertex})
+            inputs.append({
+                'type': vertex_type,
+                'offset': x,
+                'name': f'{vertex_type.lower()}_0'
+            })
+
+            vertices.append({
+                'name': f'{vertex_type}_0',
+                'type': vertex_type,
+                'index': vertex_index,
+                'scale': vertex_scale,
+                'vertex': vertex
+            })
         have_bind_matrix = self.readBool()
         if have_bind_matrix:
             for x in range(16):
@@ -70,7 +84,12 @@ class Decoder(Reader):
             weight_b = self.readUShort()
             weight_c = self.readUShort()
             weight_d = self.readUShort()
-            temp_list = [[joint_a, weight_a], [joint_b, weight_b], [joint_c, weight_c], [joint_d, weight_d]]
+            temp_list = [
+                [joint_a, weight_a],
+                [joint_b, weight_b],
+                [joint_c, weight_c],
+                [joint_d, weight_d]
+            ]
             for pair in temp_list:
                 if pair[1] != 0:
                     vcount[x] += 1
@@ -94,20 +113,24 @@ class Decoder(Reader):
                         second_temp_list.append(self.readUInteger(vertex_id_length))
                     temp_list.append(second_temp_list)
                 polygons.append(temp_list)
-            materials.append({'name': material_name, 'polygons': polygons})
+            materials.append({
+                'name': material_name,
+                'inputs': inputs,
+                'polygons': polygons
+            })
 
-        self.readed['name'] = name
-        self.readed['group'] = group
-        self.readed['vertices'] = vertices
-        self.readed['have_bind_matrix'] = have_bind_matrix
+        self.parsed['name'] = name
+        self.parsed['group'] = group
+        self.parsed['vertices'] = vertices
+        self.parsed['have_bind_matrix'] = have_bind_matrix
         if have_bind_matrix:
-            self.readed['bind_matrix'] = bind_matrix
-            self.readed['joints'] = joints
-            self.readed['weights'] = {}
-            self.readed['weights']['vcount'] = vcount
-            self.readed['weights']['weights'] = weights
-            self.readed['weights']['vertex_weights'] = vertex_weights
-        self.readed['materials'] = materials
+            self.parsed['bind_matrix'] = bind_matrix
+            self.parsed['joints'] = joints
+            self.parsed['weights'] = {}
+            self.parsed['weights']['vcount'] = vcount
+            self.parsed['weights']['weights'] = weights
+            self.parsed['weights']['vertex_weights'] = vertex_weights
+        self.parsed['materials'] = materials
 
 
 class Encoder(Writer):

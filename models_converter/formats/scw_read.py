@@ -47,19 +47,19 @@ class Parser(Reader):
 
             if chunk_name == 'HEAD':
                 head = HEAD.Decoder(chunk_data)
-                self.parsed['header'] = head.readed
+                self.parsed['header'] = head.parsed
             elif chunk_name == 'MATE':
                 mate = MATE.Decoder(chunk_data, self.parsed['header'])
-                self.parsed['materials'].append(mate.readed)
+                self.parsed['materials'].append(mate.parsed)
             elif chunk_name == 'GEOM':
                 geom = GEOM.Decoder(chunk_data, self.parsed['header'])
-                self.parsed['geometries'].append(geom.readed)
+                self.parsed['geometries'].append(geom.parsed)
             elif chunk_name == 'CAME':
                 came = CAME.Decoder(chunk_data, self.parsed['header'])
-                self.parsed['cameras'].append(came.readed)
+                self.parsed['cameras'].append(came.parsed)
             elif chunk_name == 'NODE':
                 node = NODE.Decoder(chunk_data, self.parsed['header'])
-                self.parsed['nodes'] = node.readed
+                self.parsed['nodes'] = node.parsed
             elif chunk_name == 'WEND':
                 WEND.Decoder(chunk_data)
             else:

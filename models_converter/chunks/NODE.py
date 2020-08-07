@@ -7,19 +7,19 @@ class Decoder(Reader):
         super().__init__(initial_bytes)
 
         # Variables
-        self.readed = []
+        self.parsed = []
         # Variables
 
         nodes_count = self.readUShort()
         for node in range(nodes_count):
-            self.readed.append({})
+            self.parsed.append({})
             name = self.readString()
             parent = self.readString()
-            self.readed[node] = {'name': name,
+            self.parsed[node] = {'name': name,
                                  'parent': parent}
 
             has_target = True if self.readUShort() else False
-            self.readed[node]['has_target'] = has_target
+            self.parsed[node]['has_target'] = has_target
             if has_target:
                 target_type = self.readChar(4)
                 target_name = self.readString()
@@ -31,23 +31,24 @@ class Decoder(Reader):
                     target = self.readString()
                     binds[bind] = {'symbol': symbol,
                                    'target': target}
-                self.readed[node]['target_type'] = target_type
-                self.readed[node]['target'] = target_name
-                self.readed[node]['binds'] = binds
+                self.parsed[node]['target_type'] = target_type
+                self.parsed[node]['target'] = target_name
+                self.parsed[node]['binds'] = binds
 
             frames_count = self.readUShort()
-            self.readed[node]['frames'] = []
+            self.parsed[node]['frames'] = []
             if frames_count > 0:
                 settings = list(bin(self.readUByte())[2:].zfill(8))
-                self.readed[node]['frames_settings'] = settings
+                settings = [bool(int(value)) for value in settings]
+                self.parsed[node]['frames_settings'] = settings
                 for frame in range(frames_count):
-                    self.readed[node]['frames'].append({})
+                    self.parsed[node]['frames'].append({})
                     frame_id = self.readUShort()
                     if settings[7] or frame == 0:  # Rotation
-                        rot_x = self.readUShort() / 32512
-                        rot_y = self.readUShort() / 32512
-                        rot_z = self.readUShort() / 32512
-                        w = self.readUShort() / 32512
+                        rot_x = self.readShort() / 32512
+                        rot_y = self.readShort() / 32512
+                        rot_z = self.readShort() / 32512
+                        w = self.readShort() / 32512
 
                     if settings[4] or frame == 0:  # Position X
                         pos_x = self.readFloat()
@@ -62,7 +63,7 @@ class Decoder(Reader):
                         scale_y = self.readFloat()
                     if settings[3] or frame == 0:  # Scale Z
                         scale_z = self.readFloat()
-                    self.readed[node]['frames'][frame] = {'frame_id': frame_id,
+                    self.parsed[node]['frames'][frame] = {'frame_id': frame_id,
                                                           'rotation': {'x': rot_x,
                                                                        'y': rot_y,
                                                                        'z': rot_z,
