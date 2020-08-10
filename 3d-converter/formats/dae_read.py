@@ -1,8 +1,13 @@
 import json
 from xml.etree.ElementTree import *
 
+<<<<<<< Updated upstream:3d-converter/formats/dae_read.py
 from formats.scw_write import Writer
 from utils.matrix import Matrix4x4
+=======
+from models_converter.formats.scw import Writer
+# from ..utils.matrix.matrix4x4 import Matrix4x4
+>>>>>>> Stashed changes:models_converter/formats/dae_read.py
 
 
 def _(*args):
@@ -96,6 +101,7 @@ class Parser:
                 node_data['frames'] = []
 
                 if 'matrix' in node:
+<<<<<<< Updated upstream:3d-converter/formats/dae_read.py
                     matrix = Matrix4x4(node['matrix'])
 
                     scale = matrix.get_scale()
@@ -109,6 +115,21 @@ class Parser:
                     }
 
                     node_data['frames'].append(frame_data)
+=======
+                    # matrix = Matrix4x4(node['matrix'])
+                    #
+                    # scale = matrix.get_scale()
+                    # position = matrix.get_position()
+                    #
+                    pass
+                elif 'transform' in node:
+                    node_data['frames'].append({
+                         'frame_id': 0,
+                         'rotation': {'x': 0, 'y': 0, 'z': 0, 'w': 0},
+                         'position': {'x': 0, 'y': 0, 'z': 0},
+                         'scale': {'x': 1, 'y': 1, 'z': 1}
+                    })
+>>>>>>> Stashed changes:models_converter/formats/dae_read.py
             else:
                 node_data['frames'] = []
 
@@ -314,10 +335,18 @@ class Parser:
 
             v = vertex_weights.find('collada:v', self.namespaces).text
             v = [int(x) for x in v.split()]
-            self.geometry_info['weights']['vertex_weights'] = v
+
+            vertex_weights_array = []
+            for count in vcount:
+                for x in range(count):
+                    vertex_weights_array.extend(v[x * 2: x * 2 + 2])
+            self.geometry_info['weights']['vertex_weights'] = vertex_weights_array
 
     def parse_geometry(self, geometry):
         name = geometry.attrib['id']
+
+        if name.endswith('-geom'):
+            name = name[:-5]
 
         self.geometry_info['name'] = name
 
@@ -348,8 +377,14 @@ class Parser:
             scale = max(max(vertex_temp), abs(min(vertex_temp)))
             if scale < 1:
                 scale = 1
+<<<<<<< Updated upstream:3d-converter/formats/dae_read.py
             if semantic == 'TEXCOORD':
                 vertex_temp[1::2] = [1 - x for x in vertex_temp[1::2]]
+=======
+            # if semantic == 'TEXCOORD':
+            #     vertex_temp[1::2] = [1 - x for x in vertex_temp[1::2]]
+            vertex_temp = [value / scale for value in vertex_temp]
+>>>>>>> Stashed changes:models_converter/formats/dae_read.py
 
             vertex = []
             for x in range(0, len(vertex_temp), len(accessor)):
@@ -366,16 +401,19 @@ class Parser:
             polygons_temp = [int(integer) for integer in p.text.split()]
 
             polygons = []
-            for x in range(0, len(polygons_temp), len(inputs) * 3):
+            for polygon_index in range(0, len(polygons_temp), len(inputs) * 3):
                 temp_list = []
-                for x1 in range(len(inputs)):
+                for point_index in range(3):
                     second_temp_list = []
-                    for x2 in range(3):
-                        second_temp_list.append(polygons_temp[x + x1 + x2])
+                    for vertex_index in range(len(inputs)):
+                        index = polygon_index + point_index * len(inputs) + vertex_index
+                        vertex_value = polygons_temp[index]
+                        second_temp_list.append(vertex_value)
                     temp_list.append(second_temp_list)
                 polygons.append(temp_list)
             self.geometry_info['materials'].append({'name': triangles_material,
                                                     'polygons': polygons})
+<<<<<<< Updated upstream:3d-converter/formats/dae_read.py
         self.file_data['geometries'].append(self.geometry_info)
 
 
@@ -405,3 +443,6 @@ if __name__ == '__main__':
 
     writer = Writer(parser.file_data)
     open('../8bit_geo.scw', 'wb').write(writer.writen)
+=======
+        self.parsed['geometries'].append(self.geometry_info)
+>>>>>>> Stashed changes:models_converter/formats/dae_read.py

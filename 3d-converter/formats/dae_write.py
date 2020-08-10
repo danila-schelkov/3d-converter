@@ -82,7 +82,7 @@ class Writer:
         SubElement(contributor, 'authoring_tool').text = '3d-converter (https://github.com/vorono4ka/3d-converter)'
 
         if 'version' in data['header']:
-            SubElement(contributor, 'comments').text = 'SCW Version: ' + str(data['header']['version'])
+            SubElement(contributor, 'comments').text = 'Parsed File Version: ' + str(data['header']['version'])
         # </Copyright>
 
         # <Materials>
@@ -221,7 +221,7 @@ class Writer:
             # </Polygons>
 
             # <Controller>
-            if geometry_data['have_bind_matrix']:
+            if len(geometry_data['joints']) > 0:
                 joints_matrices = []
                 joints_names = []
 
@@ -328,8 +328,20 @@ class Writer:
                 if parent_name != '':
                     node.attrib['type'] = 'JOINT'
 
+<<<<<<< Updated upstream:3d-converter/formats/dae_write.py
             for frame in node_data['frames']:
                 matrix = Matrix4x4()
+=======
+            # <AnimationVariables>
+            frame_rate = data['header']['frame_rate']
+            time_input = []
+            matrix_output = []
+            # </AnimationVariables>
+
+            frames = node_data['frames']
+            for frame in frames:
+                frame_id = frame['frame_id']
+>>>>>>> Stashed changes:models_converter/formats/dae_write.py
 
                 position_xyz = (
                     frame['position']['x'],
@@ -347,18 +359,63 @@ class Writer:
                     frame['scale']['z']
                 )
 
-                matrix.put_rotation(rotation_xyz, frame['rotation']['w'])
-                matrix.put_position(position_xyz)
-                matrix.put_scale(scale_xyz)
+                test = False
+                if test:
+                    matrix = Matrix4x4()
 
-                matrix = matrix.translation_matrix @ matrix.rotation_matrix @ matrix.scale_matrix
-                matrix_values = []
-                for row in matrix.matrix:
-                    for column in row:
-                        matrix_values.append(str(column))
+                    matrix.put_rotation(rotation_xyz, frame['rotation']['w'])
+                    matrix.put_position(position_xyz)
+                    matrix.put_scale(scale_xyz)
 
+<<<<<<< Updated upstream:3d-converter/formats/dae_write.py
                 if node_data['frames'].index(frame) == 0:
                     SubElement(node, 'matrix', sid='transform').text = ' '.join(matrix_values)
+=======
+                    matrix = matrix.translation_matrix @ matrix.rotation_matrix @ matrix.scale_matrix
+                    matrix_values = []
+                    for row in matrix.matrix:
+                        for column in row:
+                            matrix_values.append(str(column))
+
+                    if node_data['frames'].index(frame) == 0:
+                        SubElement(node, 'matrix', sid='transform').text = ' '.join(matrix_values)
+                    else:
+                        matrix_output.append(' '.join(matrix_values))
+                else:
+                    SubElement(node, 'translate', sid='translation').text = ' '.join([*position_xyz])
+                    SubElement(node, 'rotate', sid='rotation').text = ' '.join([*rotation_xyz, frame['rotation']['w']])
+                    SubElement(node, 'scale', sid='scale').text = ' '.join([*scale_xyz])
+
+            if len(frames) > 1:
+                animation = SubElement(library_animations, 'animation', id=node_name)
+
+                dae.write_source(
+                    animation,
+                    f'{node_name}-time-input',
+                    'float_array',
+                    time_input,
+                    1,
+                    [{'name': 'TIME', 'type': 'float'}]
+                )
+                dae.write_source(
+                    animation,
+                    f'{node_name}-matrix-output',
+                    'float_array',
+                    matrix_output,
+                    16,
+                    [{'name': 'TRANSFORM', 'type': 'float4x4'}]
+                )
+                dae.write_source(
+                    animation,
+                    f'{node_name}-interpolation',
+                    'Name_array',
+                    ['LINEAR' for x in range(len(frames))],
+                    1,
+                    [{'name': 'INTERPOLATION', 'type': 'name'}]
+                )
+
+                sampler = SubElement(animation, 'sampler', id=f'{node_name}-sampler')
+>>>>>>> Stashed changes:models_converter/formats/dae_write.py
 
             # pprint(node_data)
 

@@ -6,6 +6,12 @@ class Writer:
         super(Writer, self).__init__()
         self.buffer = b''
 
+    def writeUInteger(self, integer: int, length: int = 1):
+        self.buffer += integer.to_bytes(length, 'big', signed=False)
+
+    def writeInteger(self, integer: int, length: int = 1):
+        self.buffer += integer.to_bytes(length, 'big', signed=True)
+
     def writeUInt64(self, integer: int):
         self.buffer += pack('>Q', integer)
 
@@ -36,11 +42,22 @@ class Writer:
     def writeBool(self, boolean: bool):
         self.buffer += pack('>?', boolean)
 
+<<<<<<< Updated upstream:3d-converter/utils/writer.py
     def writeUInteger(self, integer: int, length: int = 1):
         return integer.to_bytes(length, 'big', signed=False)
 
     def writeInteger(self, integer: int, length: int = 1):
         return integer.to_bytes(length, 'big', signed=True)
+=======
+    def writeNormalizedUInt16(self, floating: float):
+        self.writeUInt16(round(floating * 65535))
+
+    def writeNormalizedInt16(self, floating: float):
+        self.writeInt16(round(floating * 32512))
+
+    writeUInt = writeUInteger
+    writeInt = writeInteger
+>>>>>>> Stashed changes:models_converter/utils/writer.py
 
     writeULong = writeUInt64
     writeLong = writeInt64
@@ -51,8 +68,8 @@ class Writer:
     writeUByte = writeUInt8
     writeByte = writeInt8
 
-    writeUInt = writeUInteger
-    writeInt = writeInteger
+    writeNUShort = writeNormalizedUInt16
+    writeNShort = writeNormalizedInt16
 
     def writeChar(self, string: str):
         for char in list(string):

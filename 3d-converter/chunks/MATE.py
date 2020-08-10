@@ -1,9 +1,18 @@
+<<<<<<< Updated upstream:3d-converter/chunks/MATE.py
 from utils.reader import Reader
 from utils.writer import Writer
+=======
+from ..utils.reader import Reader
+from ..utils.writer import Writer
+from .chunk import Chunk
+>>>>>>> Stashed changes:models_converter/chunks/MATE.py
 
 
-class Decoder(Reader):
-    def __init__(self, initial_bytes: bytes, header: dict):
+class Decoder(Chunk, Reader):
+    def __init__(self, header: dict):
+        super().__init__(header)
+
+    def parse(self, initial_bytes: bytes):
         super().__init__(initial_bytes)
 
         self.readed = {}
@@ -97,15 +106,12 @@ class Decoder(Reader):
         self.readed['effect']['tint'] = tint
 
 
-class Encoder(Writer):
-    def __init__(self, data: dict):
+class Encoder(Chunk, Writer):
+    def __init__(self):
         super().__init__()
         self.name = 'MATE'
+
+    def encode(self, data: dict):
         self.data = data
 
-        self.encode()
-
         self.length = len(self.buffer)
-
-    def encode(self):
-        pass

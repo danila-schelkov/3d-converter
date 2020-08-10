@@ -1,24 +1,31 @@
+<<<<<<< Updated upstream:3d-converter/chunks/WEND.py
 from utils.reader import Reader
 from utils.writer import Writer
+=======
+from ..utils.reader import Reader
+from ..utils.writer import Writer
+from .chunk import Chunk
+>>>>>>> Stashed changes:models_converter/chunks/WEND.py
 
 
-class Decoder(Reader):
-    def __init__(self, initial_bytes: bytes):
-        super().__init__(initial_bytes)
+class Decoder(Chunk, Reader):
+    def __init__(self, header: dict):
+        super().__init__(header)
 
+<<<<<<< Updated upstream:3d-converter/chunks/WEND.py
         # Variables
         self.readed = {}
         # Variables
+=======
+    def parse(self, initial_bytes: bytes):
+        super().__init__(initial_bytes)
+>>>>>>> Stashed changes:models_converter/chunks/WEND.py
 
 
-class Encoder(Writer):
+class Encoder(Chunk, Writer):
     def __init__(self):
         super().__init__()
         self.name = 'WEND'
 
-        self.encode()
-
+    def encode(self, data: dict):
         self.length = len(self.buffer)
-
-    def encode(self):
-        pass
