@@ -60,7 +60,7 @@ class Matrix4x4(Matrix):
         det -= value1_4 * matrix4.determinant()
 
         return det
-
+      
     def cofactor(self):
         value1_1 = self.matrix[0][0]
         value1_2 = self.matrix[0][1]
@@ -141,7 +141,7 @@ class Matrix4x4(Matrix):
             (value2_1, value2_3, value2_4),
             (value4_1, value4_3, value4_4)
         ))
-
+        
         matrix11 = Matrix3x3(matrix=(
             (value1_1, value1_2, value1_4),
             (value2_1, value2_2, value2_4),

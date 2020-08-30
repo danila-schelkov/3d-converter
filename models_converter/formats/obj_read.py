@@ -71,7 +71,7 @@ class Parser:
                 #     texcoord_scale = self.get_vertex_scale(self.texcoord_temp)
                 #
                 #     self.parsed['geometries'].append({
-                #         'chunk_name': geometry_name,
+                #         'name': geometry_name,
                 #         'group': '',
                 #         'vertices': [
                 #             {'type': 'POSITION', 'index': 0, 'scale': position_scale, 'vertex': self.position},
@@ -79,7 +79,7 @@ class Parser:
                 #             {'type': 'TEXCOORD', 'index': 2, 'scale': texcoord_scale, 'vertex': self.texcoord}
                 #         ],
                 #         'have_bind_matrix': False,
-                #         'materials': [{'chunk_name': 'character_mat', 'polygons': self.polygons}]
+                #         'materials': [{'name': 'character_mat', 'polygons': self.polygons}]
                 #     })
                 #
                 #     # <VariablesReset>
@@ -111,7 +111,7 @@ class Parser:
             self.texcoord.append(self.texcoord_temp[x: x + 2])
 
         self.parsed['geometries'].append({
-            'chunk_name': geometry_name,
+            'name': geometry_name,
             'group': '',
             'vertices': [
                 {'type': 'POSITION', 'index': 0, 'scale': position_scale, 'vertex': self.position},
@@ -119,7 +119,7 @@ class Parser:
                 {'type': 'TEXCOORD', 'index': 2, 'scale': texcoord_scale, 'vertex': self.texcoord}
             ],
             'have_bind_matrix': False,
-            'materials': [{'chunk_name': 'character_mat', 'polygons': self.polygons}]
+            'materials': [{'name': 'character_mat', 'polygons': self.polygons}]
         })
 
     @staticmethod

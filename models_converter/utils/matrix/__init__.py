@@ -104,7 +104,7 @@ class Matrix:
 
         return self
 
-
+      
 __all__ = [
     'matrix2x2',
     'matrix3x3',

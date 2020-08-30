@@ -4,3 +4,9 @@
 /test_upload.bat
 /upload.bat
 build.bat
+/dist/
+/build/
+/3d_converter.egg-info/
+/.idea/
+upload.bat
+test_upload.bat

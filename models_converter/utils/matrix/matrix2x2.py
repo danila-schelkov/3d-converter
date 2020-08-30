@@ -16,3 +16,4 @@ class Matrix2x2(Matrix):
 
     def cofactor(self):
         self.find_cofactor()
+

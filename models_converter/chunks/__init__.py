@@ -569,7 +569,6 @@ class WEND(Chunk, Writer, Reader):
 
         self.length = len(self.buffer)
 
-
 __all__ = [
     'HEAD',
     'MATE',

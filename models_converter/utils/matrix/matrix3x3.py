@@ -36,7 +36,7 @@ class Matrix3x3(Matrix):
         det += value1_3 * matrix3.determinant()
 
         return det
-
+      
     def cofactor(self):
         value1_1 = self.matrix[0][0]
         value1_2 = self.matrix[0][1]
