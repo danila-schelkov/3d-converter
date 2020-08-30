@@ -1,60 +1,97 @@
-from io import BufferedReader, BytesIO
-from struct import unpack
+class Reader:
+    def __init__(self, buffer: bytes, endian: str = 'big'):
+        self.buffer = buffer
+        self.endian = endian
+        self.i = 0
 
+    def read(self, length: int = 1):
+        result = self.buffer[self.i:self.i + length]
+        self.i += length
 
-class Reader(BufferedReader):
-    def __init__(self, initial_bytes: bytes, endian: str = 'big'):
-        super(Reader, self).__init__(BytesIO(initial_bytes))
-
-        self.endian_str = endian
-        if endian == 'big':
-            self.endian = '>'
-        elif endian == 'little':
-            self.endian = '<'
+        return result
 
     def readUInteger(self, length: int = 1) -> int:
-        return int.from_bytes(self.read(length), self.endian_str, signed=False)
+        result = 0
+        for x in range(length):
+            byte = self.buffer[self.i]
+
+            bit_padding = x * 8
+            if self.endian == 'big':
+                bit_padding = (8 * (length - 1)) - bit_padding
+
+            result |= byte << bit_padding
+            self.i += 1
+
+        return result
 
     def readInteger(self, length: int = 1) -> int:
-        return int.from_bytes(self.read(length), self.endian_str, signed=True)
+        integer = self.readUInteger(length)
+        result = integer
+        if integer > 2**(length * 8) / 2:
+            result -= 2**(length * 8)
+        return result
 
     def readUInt64(self) -> int:
-        return unpack(self.endian + 'Q', self.read(8))[0]
+        return self.readUInteger(8)
 
     def readInt64(self) -> int:
-        return unpack(self.endian + 'q', self.read(8))[0]
+        return self.readInteger(8)
 
     def readFloat(self) -> float:
-        return unpack(self.endian + 'f', self.read(4))[0]
+        asInt = self.readUInt32()
+        binary = bin(asInt)
+        binary = binary[2:].zfill(32)
+
+        sign = -1 if binary[0] == '1' else 1
+        exponent = int(binary[1:9], 2) - 127
+        mantissa_base = binary[9:]
+        mantissa_bin = '1' + mantissa_base
+        mantissa = 0
+        val = 1
+
+        if exponent == -127:
+            if mantissa_base[1] == -1:
+                return 0
+            else:
+                exponent = -126
+                mantissa_bin = '0' + mantissa_base
+
+        for char in mantissa_bin:
+            mantissa += val * int(char)
+            val = val / 2
+
+        result = sign * 2 ** exponent * mantissa
+        return result
 
     def readUInt32(self) -> int:
-        return unpack(self.endian + 'I', self.read(4))[0]
+        return self.readUInteger(4)
 
     def readInt32(self) -> int:
-        return unpack(self.endian + 'i', self.read(4))[0]
+        return self.readInteger(4)
+
+    def readNUInt16(self) -> float:
+        return self.readUInt16() / 65535
 
     def readUInt16(self) -> int:
-        return unpack(self.endian + 'H', self.read(2))[0]
+        return self.readUInteger(2)
+
+    def readNInt16(self) -> float:
+        return self.readInt16() / 32512
 
     def readInt16(self) -> int:
-        return unpack(self.endian + 'h', self.read(2))[0]
+        return self.readInteger(2)
 
     def readUInt8(self) -> int:
-        return unpack(self.endian + 'B', self.read(1))[0]
+        return self.readUInteger()
 
     def readInt8(self) -> int:
-        return unpack(self.endian + 'b', self.read(1))[0]
+        return self.readInteger()
 
     def readBool(self) -> bool:
-        return unpack(self.endian + '?', self.read(1))[0]
-
-    def readNormalizedUInt16(self) -> float:
-        floating = self.readUInt16() / 65535
-        return floating
-
-    def readNormalizedInt16(self) -> float:
-        floating = self.readInt16() / 32512
-        return floating
+        if self.readUInt8() >= 1:
+            return True
+        else:
+            return False
 
     readUInt = readUInteger
     readInt = readInteger
@@ -62,17 +99,21 @@ class Reader(BufferedReader):
     readULong = readUInt64
     readLong = readInt64
 
+    readNUShort = readNUInt16
+    readNShort = readNInt16
+
     readUShort = readUInt16
     readShort = readInt16
 
     readUByte = readUInt8
     readByte = readInt8
 
-    readNUShort = readNormalizedUInt16
-    readNShort = readNormalizedInt16
-
     def readChar(self, length: int = 1) -> str:
         return self.read(length).decode('utf-8')
 
     def readString(self) -> str:
-        return self.readChar(self.readUShort())
+        length = self.readUShort()
+        return self.readChar(length)
+
+    def tell(self) -> int:
+        return self.i

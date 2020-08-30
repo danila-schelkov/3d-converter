@@ -1,15 +1,9 @@
 ## `Python 3D Models Converter`
 
-<<<<<<< Updated upstream
-=======
-**Version**: 0.5.4
+**Version**: 0.6.7
 
-### **Tools:** 
->>>>>>> Stashed changes
-- scw2dae
-- scw2obj
-- obj2dae
-- dae2obj
+# Thanks a lot for motivating AMIRMISTIK! 
+https://www.youtube.com/channel/UCksd1LeoySP5St6dKlv6mvQ
 
 
 ### **THIS IS NOT RELEASE VERSION!**

@@ -1,5 +1,6 @@
 import json
 
+from models_converter.formats.dae_write import Writer
 from models_converter.utils.reader import Reader
 
 
@@ -533,13 +534,15 @@ class Parser(Reader):
         # else:
         #     node_name = node_name[0]
 
-        node_name = node_name.split(':')
-        if len(node_name) > 1:
-            # if node_name[1] == 'PIV':
-            #     print(node.name, node.translation)
-            node_name = node_name[0]
-        else:
-            node_name = node_name[0]
+        # node_name = node_name.split(':')
+        # if len(node_name) > 1:
+        #     if node_name[1] == 'PIV':
+        #         print(node.name, node.translation)
+        #     # else:
+        #     print(node)
+        #     node_name = node_name[0]
+        # else:
+        #     node_name = node_name[0]
 
         node_data = {
             'name': node_name,
@@ -589,7 +592,8 @@ class Parser(Reader):
 
             mesh_id = node.mesh
             mesh = self.gltf.meshes[mesh_id]
-            mesh_name = mesh.name.split('|')
+            mesh_name = mesh.name
+            mesh_name = mesh_name.split('|')
 
             if len(mesh_name) > 1:
                 geometry_data['group'] = mesh_name[0]
@@ -726,6 +730,8 @@ class Parser(Reader):
 
             self.parsed['geometries'].append(geometry_data)
 
+        self.parsed['nodes'].append(node_data)
+
         if node.translation or node.rotation or node.scale:
             node_data['frames'].append({
                 'frame_id': 0,
@@ -754,12 +760,20 @@ class Parser(Reader):
                 'z': node.scale[2]
             }
 
-        if node.matrix:
-            print(node.matrix)
-
-        self.parsed['nodes'].append(node_data)
-
         if node.children:
             for child_id in node.children:
                 child = self.gltf.nodes[child_id]
                 self.parse_node(child, node_name)
+
+
+if __name__ == '__main__':
+    with open('../crow_geo.glb', 'rb') as fh:
+        file_data = fh.read()
+        fh.close()
+    parser = Parser(file_data)
+    parser.parse()
+
+    writer = Writer(parser.parsed)
+    with open('../crow_geo.dae', 'w') as fh:
+        fh.write(writer.writen)
+        fh.close()

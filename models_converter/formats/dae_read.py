@@ -1,13 +1,6 @@
-import json
 from xml.etree.ElementTree import *
 
-<<<<<<< Updated upstream:3d-converter/formats/dae_read.py
-from formats.scw_write import Writer
-from utils.matrix import Matrix4x4
-=======
-from models_converter.formats.scw import Writer
-# from ..utils.matrix.matrix4x4 import Matrix4x4
->>>>>>> Stashed changes:models_converter/formats/dae_read.py
+from ..utils.matrix.matrix4x4 import Matrix4x4
 
 
 def _(*args):
@@ -26,45 +19,38 @@ class Parser:
 
             children = self.node(node.findall('collada:node', self.namespaces))
             node_data = {
-                'name': node.attrib['id'],
+                'name': node.attrib['name'],
                 'has_target': True if instance_geometry or instance_controller else False
             }
 
             if node_data['has_target']:
+                instance = None
                 binds = []
 
                 if instance_geometry:
                     instance_geometry = instance_geometry[0]
-
-                    bind_material = instance_geometry.find('collada:bind_material', self.namespaces)
-                    technique_common = bind_material[0]
-
-                    for instance_material in technique_common:
-                        binds.append({
-                            'symbol': instance_material.attrib['symbol'],
-                            'target': instance_material.attrib['target'][1:]
-                        })
+                    instance = instance_geometry
                 elif instance_controller:
                     instance_controller = instance_controller[0]
+                    instance = instance_controller
 
-                    bind_material = instance_controller.find('collada:bind_material', self.namespaces)
-                    technique_common = bind_material[0]
+                bind_material = instance.find('collada:bind_material', self.namespaces)
+                technique_common = bind_material[0]
 
-                    for instance_material in technique_common:
-                        binds.append({
-                            'symbol': instance_material.attrib['symbol'],
-                            'target': instance_material.attrib['target'][1:]
-                        })
+                for instance_material in technique_common:
+                    binds.append({
+                        'symbol': instance_material.attrib['symbol'],
+                        'target': instance_material.attrib['target'][1:]
+                    })
 
                 if instance_geometry:
                     node_data['target_type'] = 'GEOM'
-                elif instance_controller:
-                    node_data['target_type'] = 'CONT'
 
-                if instance_geometry:
                     geometry_url = instance_geometry.attrib['url']
                     node_data['target'] = geometry_url[1:]
                 elif instance_controller:
+                    node_data['target_type'] = 'CONT'
+
                     controller_url = instance_controller.attrib['url']
                     node_data['target'] = controller_url[1:]
 
@@ -101,73 +87,61 @@ class Parser:
                 node_data['frames'] = []
 
                 if 'matrix' in node:
-<<<<<<< Updated upstream:3d-converter/formats/dae_read.py
-                    matrix = Matrix4x4(node['matrix'])
+                    matrix = Matrix4x4(matrix=node['matrix'])
 
-                    scale = matrix.get_scale()
+                    # scale = matrix.get_scale()
                     position = matrix.get_position()
 
                     frame_data = {
                         'frame_id': 0,
                         'rotation': {'x': 0, 'y': 0, 'z': 0, 'w': 0},
-                        'position': {'x': position[0], 'y': position[1], 'z': position[2]},
-                        'scale': {'x': scale[0], 'y': scale[1], 'z': scale[2]}
+                        'position': position,
+                        'scale': {'x': 1, 'y': 1, 'z': 1}
                     }
 
                     node_data['frames'].append(frame_data)
-=======
-                    # matrix = Matrix4x4(node['matrix'])
-                    #
-                    # scale = matrix.get_scale()
-                    # position = matrix.get_position()
-                    #
-                    pass
-                elif 'transform' in node:
-                    node_data['frames'].append({
-                         'frame_id': 0,
-                         'rotation': {'x': 0, 'y': 0, 'z': 0, 'w': 0},
-                         'position': {'x': 0, 'y': 0, 'z': 0},
-                         'scale': {'x': 1, 'y': 1, 'z': 1}
-                    })
->>>>>>> Stashed changes:models_converter/formats/dae_read.py
             else:
                 node_data['frames'] = []
 
             # node_data['frames'] = node['frames']
-            self.file_data['nodes'].append(node_data)
+            self.parsed['nodes'].append(node_data)
             self.fix_nodes_list(node['children'], node['name'])
 
     def __init__(self, file_data):
-        self.file_data = {'header': {'version': 2,
-                                     'frame_rate': 30,
-                                     'materials_file': 'sc3d/character_materials.scw'},
-                          'materials': [],
-                          'geometries': [],
-                          'cameras': [],
-                          'nodes': []}
+        self.parsed = {'header': {'version': 2,
+                                  'frame_rate': 30,
+                                  'materials_file': 'sc3d/character_materials.scw'},
+                       'materials': [],
+                       'geometries': [],
+                       'cameras': [],
+                       'nodes': []}
 
         self.geometry_info = {}
 
         root = fromstring(file_data)
-        # tree = parse(file_path)
-        # root = tree.getroot()
 
         self.namespaces = {
             'collada': 'http://www.collada.org/2005/11/COLLADASchema'
         }
 
-        # Libraries
+        # <Libraries>
         self.library_materials = root.find('./collada:library_materials', self.namespaces)
         self.library_effects = root.find('./collada:library_effects', self.namespaces)
 
         self.library_geometries = root.find('./collada:library_geometries', self.namespaces)
         self.library_controllers = root.find('./collada:library_controllers', self.namespaces)
 
-        library_scenes = root.find('./collada:library_visual_scenes', self.namespaces)
-        # Libraries
+        self.instance_scene = root.find('./collada:scene', self.namespaces).find('collada:instance_visual_scene',
+                                                                                 self.namespaces)
+        self.library_scenes = root.find('./collada:library_visual_scenes', self.namespaces)
+        # </Libraries>
 
+        if self.library_materials is None:
+            self.library_materials = []
+
+    def parse(self):
         for material in self.library_materials:
-            material_name = material.attrib['id']
+            material_name = material.attrib['name']
 
             instance_effect = material.find('collada:instance_effect', self.namespaces)
             if instance_effect is not None:
@@ -226,20 +200,19 @@ class Parser:
                         }
                     }
 
-                    self.file_data['materials'].append(material_data)
+                    self.parsed['materials'].append(material_data)
 
-        instance_scene = root.find('./collada:scene', self.namespaces).find('collada:instance_visual_scene',
-                                                                            self.namespaces)
-        scene_url = instance_scene.attrib['url'][1:]
-        scene = library_scenes.find(f'collada:visual_scene[@id="{scene_url}"]', self.namespaces)
+        scene_url = self.instance_scene.attrib['url'][1:]
+        scene = self.library_scenes.find(f'collada:visual_scene[@id="{scene_url}"]', self.namespaces)
 
         nodes = self.node(scene.findall('collada:node', self.namespaces))
         self.fix_nodes_list(nodes)
+        self.parse_nodes()
 
     def parse_nodes(self):
-        nodes = self.file_data['nodes']
-        for node in nodes:
-            node: dict = node  # this line for fix "Expected type"
+        nodes = self.parsed['nodes']
+        for node_index in range(len(nodes)):
+            node = nodes[node_index]
             if node['has_target']:
                 controller = None
                 geometry = None
@@ -254,6 +227,15 @@ class Parser:
                 elif node['target_type'] == 'GEOM':
                     geometry = self.library_geometries \
                         .find(f'collada:geometry[@id="{node["target"]}"]', self.namespaces)
+
+                node['target'] = geometry.attrib['name']
+
+                if node['target'][-5:] in ['-skin', '-cont']:
+                    node['target'] = node['target'][:-5]
+                if node['target'][-5:] in ['-mesh', '-geom']:
+                    node['target'] = node['target'][:-5]
+
+                self.parsed['nodes'][node_index] = node
 
                 if geometry is not None:
                     self.geometry_info = {'name': '',
@@ -335,17 +317,12 @@ class Parser:
 
             v = vertex_weights.find('collada:v', self.namespaces).text
             v = [int(x) for x in v.split()]
-
-            vertex_weights_array = []
-            for count in vcount:
-                for x in range(count):
-                    vertex_weights_array.extend(v[x * 2: x * 2 + 2])
-            self.geometry_info['weights']['vertex_weights'] = vertex_weights_array
+            self.geometry_info['weights']['vertex_weights'] = v
 
     def parse_geometry(self, geometry):
-        name = geometry.attrib['id']
+        name = geometry.attrib['name']
 
-        if name.endswith('-geom'):
+        if name[-5:] in ['-mesh', '-geom']:
             name = name[:-5]
 
         self.geometry_info['name'] = name
@@ -377,14 +354,9 @@ class Parser:
             scale = max(max(vertex_temp), abs(min(vertex_temp)))
             if scale < 1:
                 scale = 1
-<<<<<<< Updated upstream:3d-converter/formats/dae_read.py
             if semantic == 'TEXCOORD':
                 vertex_temp[1::2] = [1 - x for x in vertex_temp[1::2]]
-=======
-            # if semantic == 'TEXCOORD':
-            #     vertex_temp[1::2] = [1 - x for x in vertex_temp[1::2]]
             vertex_temp = [value / scale for value in vertex_temp]
->>>>>>> Stashed changes:models_converter/formats/dae_read.py
 
             vertex = []
             for x in range(0, len(vertex_temp), len(accessor)):
@@ -401,48 +373,14 @@ class Parser:
             polygons_temp = [int(integer) for integer in p.text.split()]
 
             polygons = []
-            for polygon_index in range(0, len(polygons_temp), len(inputs) * 3):
+            for x in range(0, len(polygons_temp), len(inputs) * 3):
                 temp_list = []
-                for point_index in range(3):
+                for x1 in range(len(inputs)):
                     second_temp_list = []
-                    for vertex_index in range(len(inputs)):
-                        index = polygon_index + point_index * len(inputs) + vertex_index
-                        vertex_value = polygons_temp[index]
-                        second_temp_list.append(vertex_value)
+                    for x2 in range(3):
+                        second_temp_list.append(polygons_temp[x + x1 + x2])
                     temp_list.append(second_temp_list)
                 polygons.append(temp_list)
             self.geometry_info['materials'].append({'name': triangles_material,
                                                     'polygons': polygons})
-<<<<<<< Updated upstream:3d-converter/formats/dae_read.py
-        self.file_data['geometries'].append(self.geometry_info)
-
-
-# NODES TEMPLATE
-# {'name': ...,
-#  'parent': ...,
-#  'has_target': False,
-#  'frames': [{'frame_id': 0,
-#              'rotation': {'x': ...,
-#                           'y': ...,
-#                           'z': ...,
-#                           'w': ...},
-#              'position': {'x': ...,
-#                           'y': ...,
-#                           'z': ...},
-#              'scale': {'x': ...,
-#                        'y': ...,
-#                        'z': ...},
-#              }]}
-
-
-if __name__ == '__main__':
-    parser = Parser(open('../8bit_geo.dae').read())
-    parser.parse_nodes()
-
-    json.dump(parser.file_data, open('../parsed_info.json', 'w'))
-
-    writer = Writer(parser.file_data)
-    open('../8bit_geo.scw', 'wb').write(writer.writen)
-=======
         self.parsed['geometries'].append(self.geometry_info)
->>>>>>> Stashed changes:models_converter/formats/dae_read.py

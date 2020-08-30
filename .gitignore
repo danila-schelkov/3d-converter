@@ -1,3 +1,6 @@
 
-/test_build.bat
+/build/
+/dist/
+/test_upload.bat
+/upload.bat
 build.bat

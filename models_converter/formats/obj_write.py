@@ -6,10 +6,27 @@ def _(*args):
 
 
 class Writer:
-    def __init__(self, info: list):
+    def __init__(self):
         self.writen = ''
-        for geom in info:
+
+        self.temp_vertices_offsets = {
+            'POSITION': 0,
+            'TEXCOORD': 0,
+            'NORMAL': 0
+        }
+
+        self.vertices_offsets = {
+            'POSITION': 0,
+            'TEXCOORD': 0,
+            'NORMAL': 0
+        }
+
+    def write(self, data: dict):
+        for geom in data['geometries']:
+            for key in self.vertices_offsets.keys():
+                self.vertices_offsets[key] = self.temp_vertices_offsets[key]
             prefix = ''
+
             name = geom['name']
             vertices = geom['vertices']
             materials = geom['materials']
@@ -20,6 +37,9 @@ class Writer:
                     prefix = 'vn '
                 elif vertex['type'] == 'TEXCOORD':
                     prefix = 'vt '
+
+                self.temp_vertices_offsets[vertex['type']] += len(vertex['vertex'])
+
                 for item in vertex['vertex']:
                     temp_string = prefix
                     for subitem in item:
@@ -31,9 +51,12 @@ class Writer:
                 for item in material['polygons']:
                     temp_string = 'f '
                     for subitem in item:
-                        temp_list = []
-                        for subitem_of_subitem in [subitem[0], subitem[2], subitem[1]]:
-                            temp_list.append(str(subitem_of_subitem + 1))
+                        temp_list = [
+                            str(subitem[0] + self.vertices_offsets['POSITION'] + 1),  # POSITION
+                            str(subitem[2] + self.vertices_offsets['TEXCOORD'] + 1),  # TEXCOORD
+                            str(subitem[1] + self.vertices_offsets['NORMAL'] + 1)  # NORMAL
+                        ]
+
                         temp_string += '/'.join(temp_list) + ' '
                     self.writen += f'{temp_string}\n'
                 self.writen += '\n\n'

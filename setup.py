@@ -6,11 +6,7 @@ with open('README.md') as fh:
 
 setuptools.setup(
     name='3d-converter',
-<<<<<<< Updated upstream
-    version='0.3.4',
-=======
-    version='0.5.5',
->>>>>>> Stashed changes
+    version='0.6.7',
     author='Vorono4ka',
     author_email='crowo4ka@gmail.com',
     description='Python 3D Models Converter',
@@ -26,4 +22,3 @@ setuptools.setup(
     ],
     python_requires='>=3.7',
 )
-#
