@@ -59,7 +59,10 @@ class Collada:
 
 
 class Writer:
-    def __init__(self, data: dict):
+    def __init__(self):
+        self.writen = ''
+
+    def write(self, data: dict):
         dae = Collada()
         collada = dae.collada
         asset = SubElement(collada, 'asset')
@@ -333,7 +336,7 @@ class Writer:
             frames = node_data['frames']
             for frame in frames:
                 frame_id = frame['frame_id']
-                matrix = Matrix4x4()
+                matrix = Matrix4x4(size=(4, 4))
 
                 time_input.append(str(frame_id/frame_rate))
 

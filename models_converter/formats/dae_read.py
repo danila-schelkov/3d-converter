@@ -1,7 +1,6 @@
 from xml.etree.ElementTree import *
 
-from models_converter.formats.scw_write import Writer
-# from ..utils.matrix.matrix4x4 import Matrix4x4
+from ..utils.matrix.matrix4x4 import Matrix4x4
 
 
 def _(*args):
@@ -20,45 +19,38 @@ class Parser:
 
             children = self.node(node.findall('collada:node', self.namespaces))
             node_data = {
-                'name': node.attrib['id'],
+                'name': node.attrib['name'],
                 'has_target': True if instance_geometry or instance_controller else False
             }
 
             if node_data['has_target']:
+                instance = None
                 binds = []
 
                 if instance_geometry:
                     instance_geometry = instance_geometry[0]
-
-                    bind_material = instance_geometry.find('collada:bind_material', self.namespaces)
-                    technique_common = bind_material[0]
-
-                    for instance_material in technique_common:
-                        binds.append({
-                            'symbol': instance_material.attrib['symbol'],
-                            'target': instance_material.attrib['target'][1:]
-                        })
+                    instance = instance_geometry
                 elif instance_controller:
                     instance_controller = instance_controller[0]
+                    instance = instance_controller
 
-                    bind_material = instance_controller.find('collada:bind_material', self.namespaces)
-                    technique_common = bind_material[0]
+                bind_material = instance.find('collada:bind_material', self.namespaces)
+                technique_common = bind_material[0]
 
-                    for instance_material in technique_common:
-                        binds.append({
-                            'symbol': instance_material.attrib['symbol'],
-                            'target': instance_material.attrib['target'][1:]
-                        })
+                for instance_material in technique_common:
+                    binds.append({
+                        'symbol': instance_material.attrib['symbol'],
+                        'target': instance_material.attrib['target'][1:]
+                    })
 
                 if instance_geometry:
                     node_data['target_type'] = 'GEOM'
-                elif instance_controller:
-                    node_data['target_type'] = 'CONT'
 
-                if instance_geometry:
                     geometry_url = instance_geometry.attrib['url']
                     node_data['target'] = geometry_url[1:]
                 elif instance_controller:
+                    node_data['target_type'] = 'CONT'
+
                     controller_url = instance_controller.attrib['url']
                     node_data['target'] = controller_url[1:]
 
@@ -95,15 +87,15 @@ class Parser:
                 node_data['frames'] = []
 
                 if 'matrix' in node:
-                    # matrix = Matrix4x4(node['matrix'])
-                    #
+                    matrix = Matrix4x4(matrix=node['matrix'])
+
                     # scale = matrix.get_scale()
-                    # position = matrix.get_position()
-                    #
+                    position = matrix.get_position()
+
                     frame_data = {
                         'frame_id': 0,
                         'rotation': {'x': 0, 'y': 0, 'z': 0, 'w': 0},
-                        'position': {'x': 0, 'y': 0, 'z': 0},
+                        'position': position,
                         'scale': {'x': 1, 'y': 1, 'z': 1}
                     }
 
@@ -139,11 +131,17 @@ class Parser:
         self.library_geometries = root.find('./collada:library_geometries', self.namespaces)
         self.library_controllers = root.find('./collada:library_controllers', self.namespaces)
 
-        library_scenes = root.find('./collada:library_visual_scenes', self.namespaces)
+        self.instance_scene = root.find('./collada:scene', self.namespaces).find('collada:instance_visual_scene',
+                                                                                 self.namespaces)
+        self.library_scenes = root.find('./collada:library_visual_scenes', self.namespaces)
         # </Libraries>
 
+        if self.library_materials is None:
+            self.library_materials = []
+
+    def parse(self):
         for material in self.library_materials:
-            material_name = material.attrib['id']
+            material_name = material.attrib['name']
 
             instance_effect = material.find('collada:instance_effect', self.namespaces)
             if instance_effect is not None:
@@ -204,13 +202,12 @@ class Parser:
 
                     self.parsed['materials'].append(material_data)
 
-        instance_scene = root.find('./collada:scene', self.namespaces).find('collada:instance_visual_scene',
-                                                                            self.namespaces)
-        scene_url = instance_scene.attrib['url'][1:]
-        scene = library_scenes.find(f'collada:visual_scene[@id="{scene_url}"]', self.namespaces)
+        scene_url = self.instance_scene.attrib['url'][1:]
+        scene = self.library_scenes.find(f'collada:visual_scene[@id="{scene_url}"]', self.namespaces)
 
         nodes = self.node(scene.findall('collada:node', self.namespaces))
         self.fix_nodes_list(nodes)
+        self.parse_nodes()
 
     def parse_nodes(self):
         nodes = self.parsed['nodes']
@@ -231,9 +228,11 @@ class Parser:
                     geometry = self.library_geometries \
                         .find(f'collada:geometry[@id="{node["target"]}"]', self.namespaces)
 
-                if node['target'].endswith('-cont'):
+                node['target'] = geometry.attrib['name']
+
+                if node['target'][-5:] in ['-skin', '-cont']:
                     node['target'] = node['target'][:-5]
-                if node['target'].endswith('-geom'):
+                if node['target'][-5:] in ['-mesh', '-geom']:
                     node['target'] = node['target'][:-5]
 
                 self.parsed['nodes'][node_index] = node
@@ -321,7 +320,10 @@ class Parser:
             self.geometry_info['weights']['vertex_weights'] = v
 
     def parse_geometry(self, geometry):
-        name = geometry.attrib['id']
+        name = geometry.attrib['name']
+
+        if name[-5:] in ['-mesh', '-geom']:
+            name = name[:-5]
 
         self.geometry_info['name'] = name
 
@@ -382,16 +384,3 @@ class Parser:
             self.geometry_info['materials'].append({'name': triangles_material,
                                                     'polygons': polygons})
         self.parsed['geometries'].append(self.geometry_info)
-
-
-if __name__ == '__main__':
-    with open('../crow_geo.dae') as fh:
-        file_data = fh.read()
-        fh.close()
-    parser = Parser(file_data)
-    parser.parse_nodes()
-
-    writer = Writer(parser.parsed)
-    with open('../crow_geo.scw', 'wb') as fh:
-        fh.write(writer.writen)
-        fh.close()

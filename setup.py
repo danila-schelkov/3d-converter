@@ -6,7 +6,7 @@ with open('README.md') as fh:
 
 setuptools.setup(
     name='3d-converter',
-    version='0.5.6',
+    version='0.6.7',
     author='Vorono4ka',
     author_email='crowo4ka@gmail.com',
     description='Python 3D Models Converter',
@@ -20,5 +20,5 @@ setuptools.setup(
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
         'Operating System :: OS Independent',
     ],
-    python_requires='>=3.6',
+    python_requires='>=3.7',
 )

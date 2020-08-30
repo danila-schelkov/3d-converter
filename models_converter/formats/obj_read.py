@@ -32,7 +32,7 @@ class Parser:
         self.parse()
 
     def parse(self):
-        geometry_name = 'This model haven\'t a name!:( Its VERY SAD!'
+        geometry_name = 'This model haven\'t a chunk_name!:( Its VERY SAD!'
         is_first_name = True
         for line in self.lines:
             items = line.split()[1:]

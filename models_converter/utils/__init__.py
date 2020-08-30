@@ -1,4 +1,5 @@
 __all__ = [
     'reader',
-    'writer'
+    'writer',
+    'matrix'
 ]
