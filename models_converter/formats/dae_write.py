@@ -356,8 +356,7 @@ class Writer:
 
                 if node_data['frames'].index(frame) == 0:
                     SubElement(node, 'matrix', sid='transform').text = ' '.join(matrix_values)
-                else:
-                    matrix_output.append(' '.join(matrix_values))
+                matrix_output.append(' '.join(matrix_values))
 
             if len(frames) > 1:
                 animation = SubElement(library_animations, 'animation', id=node_name)
