@@ -4,5 +4,5 @@ __all__ = [
     'obj_write',
     'obj_read',
     'gltf',
-    'scw',
+    'scw'
 ]

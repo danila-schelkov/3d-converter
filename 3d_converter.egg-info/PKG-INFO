@@ -1,0 +1,27 @@
+Metadata-Version: 2.1
+Name: 3d-converter
+Version: 0.6.7
+Summary: Python 3D Models Converter
+Home-page: https://github.com/vorono4ka/3d-converter
+Author: Vorono4ka
+Author-email: crowo4ka@gmail.com
+License: GPLv3
+Description: ## `Python 3D Models Converter`
+        
+        **Version**: 0.5.6
+        
+        ### **Tools:** 
+        - scw2dae
+        - scw2obj
+        - obj2dae
+        - dae2obj
+        
+        
+        ### **THIS IS NOT RELEASE VERSION!**
+        
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: GNU General Public License v3 (GPLv3)
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown

@@ -243,7 +243,6 @@ class Matrix4x4(Matrix):
             'y': position[1],
             'z': position[2]
         }
-
         return position
 
     def get_scale(self) -> dict:
