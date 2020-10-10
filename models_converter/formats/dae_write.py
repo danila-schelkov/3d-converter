@@ -64,18 +64,17 @@ class Writer:
 
     def write(self, data: dict):
         dae = Collada()
-        collada = dae.collada
-        asset = SubElement(collada, 'asset')
+        asset = SubElement(dae.collada, 'asset')
 
         # <Libraries>
-        library_materials = SubElement(collada, 'library_materials')
-        library_effects = SubElement(collada, 'library_effects')
-        library_images = SubElement(collada, 'library_images')
-        library_geometries = SubElement(collada, 'library_geometries')
-        library_controllers = SubElement(collada, 'library_controllers')
-        library_animations = SubElement(collada, 'library_animations')
-        library_cameras = SubElement(collada, 'library_cameras')
-        library_visual_scenes = SubElement(collada, 'library_visual_scenes')
+        library_materials = SubElement(dae.collada, 'library_materials')
+        library_effects = SubElement(dae.collada, 'library_effects')
+        library_images = SubElement(dae.collada, 'library_images')
+        library_geometries = SubElement(dae.collada, 'library_geometries')
+        library_controllers = SubElement(dae.collada, 'library_controllers')
+        library_animations = SubElement(dae.collada, 'library_animations')
+        library_cameras = SubElement(dae.collada, 'library_cameras')
+        library_visual_scenes = SubElement(dae.collada, 'library_visual_scenes')
         # </Libraries>
 
         # <Copyright>
@@ -324,7 +323,7 @@ class Writer:
                                    symbol=symbol,
                                    target=f'#{target}')
             else:
-                if parent_name is not None:
+                if parent_name != '':
                     node.attrib['type'] = 'JOINT'
 
             # <AnimationVariables>
@@ -381,7 +380,7 @@ class Writer:
                     animation,
                     f'{node_name}-interpolation',
                     'Name_array',
-                    ['LINEAR' for x in range(len(frames))],
+                    ['LINEAR'] * len(frames),
                     1,
                     [{'name': 'INTERPOLATION', 'type': 'name'}]
                 )
@@ -410,11 +409,11 @@ class Writer:
                            source=f'#{node_name}-sampler',
                            target=f'{node_name}/transform')
 
-        scene = SubElement(collada, 'scene')
+        scene = SubElement(dae.collada, 'scene')
         SubElement(scene, 'instance_visual_scene',
                    url='#3dConverterScene',
                    name='3d-Converter Scene')
 
         # </Scene>
 
-        self.writen = tostring(collada, xml_declaration=True).decode()
+        self.writen = tostring(dae.collada, xml_declaration=True).decode()
