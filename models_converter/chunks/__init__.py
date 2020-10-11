@@ -439,22 +439,28 @@ class NODE(Chunk, Writer, Reader):
             node_data['name'] = self.readString()
             node_data['parent'] = self.readString()
 
-            has_target = True if self.readUShort() else False
-            node_data['has_target'] = has_target
-            if has_target:
-                target_type = self.readChar(4)
-                target_name = self.readString()
-                binds_count = self.readUShort()
-                binds = []
-                for bind in range(binds_count):
-                    binds.append({})
-                    symbol = self.readString()
+            instances_count = self.readUShort()
+            node_data['instances'] = [{}] * instances_count
+            for x in range(instances_count):
+                instance_type = self.readChar(4)
+                instance_name = self.readString()
+
+                node_data['instances'][x] = {}
+                if instance_type in ['GEOM', 'CONT']:
+                    materials_count = self.readUShort()
+                    binds = []
+                    for bind in range(materials_count):
+                        binds.append({})
+                        symbol = self.readString()
+                        target = self.readString()
+                        binds[bind] = {'symbol': symbol,
+                                       'target': target}
+                    node_data['instances'][x]['binds'] = binds
+                elif instance_type in ['CAME']:
                     target = self.readString()
-                    binds[bind] = {'symbol': symbol,
-                                   'target': target}
-                node_data['target_type'] = target_type
-                node_data['target'] = target_name
-                node_data['binds'] = binds
+                    node_data['instances'][x]['target'] = target
+                node_data['instances'][x]['instance_name'] = instance_name
+                node_data['instances'][x]['instance_type'] = instance_type
 
             frames_count = self.readUShort()
             node_data['frames'] = []
@@ -512,12 +518,12 @@ class NODE(Chunk, Writer, Reader):
             self.writeString(node['name'])
             self.writeString(node['parent'])
 
-            self.writeUShort(1 if node['has_target'] else 0)
-            if node['has_target']:
-                self.writeChar(node['target_type'])
-                self.writeString(node['target'])
-                self.writeUShort(len(node['binds']))
-                for bind in node['binds']:
+            self.writeUShort(len(node['instances']))
+            for instance in node['instances']:
+                self.writeChar(instance['instance_type'])
+                self.writeString(instance['instance_name'])
+                self.writeUShort(len(instance['binds']))
+                for bind in instance['binds']:
                     self.writeString(bind['symbol'])
                     self.writeString(bind['target'])
 

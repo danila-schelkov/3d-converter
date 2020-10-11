@@ -69,11 +69,11 @@ class Writer:
         # <Libraries>
         library_materials = SubElement(dae.collada, 'library_materials')
         library_effects = SubElement(dae.collada, 'library_effects')
-        library_images = SubElement(dae.collada, 'library_images')
+        # library_images = SubElement(dae.collada, 'library_images')
         library_geometries = SubElement(dae.collada, 'library_geometries')
         library_controllers = SubElement(dae.collada, 'library_controllers')
         library_animations = SubElement(dae.collada, 'library_animations')
-        library_cameras = SubElement(dae.collada, 'library_cameras')
+        # library_cameras = SubElement(dae.collada, 'library_cameras')
         library_visual_scenes = SubElement(dae.collada, 'library_visual_scenes')
         # </Libraries>
 
@@ -296,26 +296,21 @@ class Writer:
 
             node = SubElement(parent, 'node', id=node_data['name'])
 
-            if node_data['has_target']:
-                target_type = node_data['target_type']
-                target_id = node_data['target']
+            for instance in node_data['instances']:
+                instance_type = instance['instance_type']
+                instance_name = instance['instance_name']
+                bind_material = None
 
-                if target_type == 'CONT':
-                    instance_controller = SubElement(node, 'instance_controller', url=f'#{target_id}-cont')
+                if instance_type == 'CONT':
+                    instance_controller = SubElement(node, 'instance_controller', url=f'#{instance_name}-cont')
                     bind_material = SubElement(instance_controller, 'bind_material')
-                    technique_common = SubElement(bind_material, 'technique_common')
-                    for bind in node_data['binds']:
-                        symbol = bind['symbol']
-                        target = bind['target']
+                elif instance_type == 'GEOM':
+                    instance_controller = SubElement(node, 'instance_geometry', url=f'#{instance_name}-geom')
+                    bind_material = SubElement(instance_controller, 'bind_material')
 
-                        SubElement(technique_common, 'instance_material',
-                                   symbol=symbol,
-                                   target=f'#{target}')
-                elif target_type == 'GEOM':
-                    instance_controller = SubElement(node, 'instance_geometry', url=f'#{target_id}-geom')
-                    bind_material = SubElement(instance_controller, 'bind_material')
+                if instance_type in ['GEOM', 'CONT']:
                     technique_common = SubElement(bind_material, 'technique_common')
-                    for bind in node_data['binds']:
+                    for bind in instance['binds']:
                         symbol = bind['symbol']
                         target = bind['target']
 
@@ -426,22 +421,17 @@ class Parser:
             instance_geometry = node.findall('collada:instance_geometry', self.namespaces)
             instance_controller = node.findall('collada:instance_controller', self.namespaces)
 
+            instances = instance_geometry.extend(instance_controller)
+
             children = self.node(node.findall('collada:node', self.namespaces))
             node_data = {
                 'name': node.attrib['name'],
-                'has_target': True if instance_geometry or instance_controller else False
+                'instances': []
             }
 
-            if node_data['has_target']:
-                instance = None
+            for instance in instances:
+                node_data['instances'] = [{}]
                 binds = []
-
-                if instance_geometry:
-                    instance_geometry = instance_geometry[0]
-                    instance = instance_geometry
-                elif instance_controller:
-                    instance_controller = instance_controller[0]
-                    instance = instance_controller
 
                 bind_material = instance.find('collada:bind_material', self.namespaces)
                 technique_common = bind_material[0]
@@ -453,17 +443,17 @@ class Parser:
                     })
 
                 if instance_geometry:
-                    node_data['target_type'] = 'GEOM'
+                    node_data['instances'][0]['instance_type'] = 'GEOM'
 
                     geometry_url = instance_geometry.attrib['url']
-                    node_data['target'] = geometry_url[1:]
+                    node_data['instances'][0]['instance_name'] = geometry_url[1:]
                 elif instance_controller:
-                    node_data['target_type'] = 'CONT'
+                    node_data['instances'][0]['instance_type'] = 'CONT'
 
                     controller_url = instance_controller.attrib['url']
-                    node_data['target'] = controller_url[1:]
+                    node_data['instances'][0]['instance_name'] = controller_url[1:]
 
-                node_data['binds'] = binds
+                node_data['instances'][0]['binds'] = binds
 
             matrix = node.findall('collada:matrix', self.namespaces)
             if matrix:
@@ -483,15 +473,10 @@ class Parser:
             node_data = {
                 'name': node['name'],
                 'parent': parent,
-                'has_target': node['has_target']
+                'instances': node['instances']
             }
 
-            if node_data['has_target']:
-                node_data['target_type'] = node['target_type']
-                node_data['target'] = node['target']
-                node_data['binds'] = node['binds']
-
-            if not node_data['has_target']:
+            if len(node_data['instances']) == 0:
                 node_data['frames_settings'] = [0, 0, 0, 0, 0, 0, 0, 0]
                 node_data['frames'] = []
 
@@ -501,14 +486,14 @@ class Parser:
                     # scale = matrix.get_scale()
                     position = matrix.get_position()
 
-                    frame_data = {
-                        'frame_id': 0,
-                        'rotation': {'x': 0, 'y': 0, 'z': 0, 'w': 0},
-                        'position': position,
-                        'scale': {'x': 1, 'y': 1, 'z': 1}
-                    }
-
-                    node_data['frames'].append(frame_data)
+                    node_data['frames'] = [
+                        {
+                            'frame_id': 0,
+                            'rotation': {'x': 0, 'y': 0, 'z': 0, 'w': 0},
+                            'position': position,
+                            'scale': {'x': 1, 'y': 1, 'z': 1}
+                        }
+                    ]
             else:
                 node_data['frames'] = []
 
@@ -622,27 +607,27 @@ class Parser:
         nodes = self.parsed['nodes']
         for node_index in range(len(nodes)):
             node = nodes[node_index]
-            if node['has_target']:
+            for instance in node['instances']:
                 controller = None
                 geometry = None
 
-                if node['target_type'] == 'CONT':
+                if node['instance_type'] == 'CONT':
                     controller = self.library_controllers \
-                        .find(f'collada:controller[@id="{node["target"]}"]', self.namespaces)
+                        .find(f'collada:controller[@id="{instance["instance_name"]}"]', self.namespaces)
 
                     geometry_url = controller[0].attrib['source'][1:]
                     geometry = self.library_geometries \
                         .find(f'collada:geometry[@id="{geometry_url}"]', self.namespaces)
-                elif node['target_type'] == 'GEOM':
+                elif node['instance_type'] == 'GEOM':
                     geometry = self.library_geometries \
-                        .find(f'collada:geometry[@id="{node["target"]}"]', self.namespaces)
+                        .find(f'collada:geometry[@id="{instance["instance_name"]}"]', self.namespaces)
 
-                node['target'] = geometry.attrib['name']
+                node['instance_name'] = geometry.attrib['name']
 
-                if node['target'][-5:] in ['-skin', '-cont']:
-                    node['target'] = node['target'][:-5]
-                if node['target'][-5:] in ['-mesh', '-geom']:
-                    node['target'] = node['target'][:-5]
+                for suffix in ['-skin', '-cont']:
+                    node['instance_name'] = node['instance_name'].removesuffix(suffix)
+                for suffix in ['-mesh', '-geom']:
+                    node['instance_name'] = node['instance_name'].removesuffix(suffix)
 
                 self.parsed['nodes'][node_index] = node
 

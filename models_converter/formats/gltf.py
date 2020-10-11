@@ -1,6 +1,6 @@
 import json
 
-from models_converter.formats.dae_write import Writer
+from models_converter.formats.dae import Writer
 from models_converter.utils.reader import Reader
 
 
@@ -773,7 +773,7 @@ if __name__ == '__main__':
     parser = Parser(file_data)
     parser.parse()
 
-    writer = Writer(parser.parsed)
+    writer = Writer()
     with open('../crow_geo.dae', 'w') as fh:
         fh.write(writer.writen)
         fh.close()
