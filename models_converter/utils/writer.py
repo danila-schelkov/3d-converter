@@ -1,24 +1,24 @@
 class Writer:
-    def __init__(self, endian: str = 'big'):
+    def __init__(self, endian='big'):
         self.endian = endian
         self.buffer = b''
 
-    def write(self, data: bytes):
+    def write(self, data):
         self.buffer += data
 
-    def writeUInteger(self, integer: int, length: int = 1):
+    def writeUInteger(self, integer, length=1):
         self.buffer += integer.to_bytes(length, self.endian, signed=False)
 
-    def writeInteger(self, integer: int, length: int = 1):
+    def writeInteger(self, integer, length=1):
         self.buffer += integer.to_bytes(length, self.endian, signed=True)
 
-    def writeUInt64(self, integer: int):
+    def writeUInt64(self, integer):
         self.writeUInteger(integer, 8)
 
-    def writeInt64(self, integer: int):
+    def writeInt64(self, integer):
         self.writeInteger(integer, 8)
 
-    def writeFloat(self, floating: float):
+    def writeFloat(self, floating):
         exponent = 0
         sign = 1
 
@@ -52,8 +52,8 @@ class Writer:
             mantissa_bin = ''
             for x in range(24):
                 bit = '0'
-                if mantissa >= 1/2**x:
-                    mantissa -= 1/2**x
+                if mantissa >= 1 / 2 ** x:
+                    mantissa -= 1 / 2 ** x
                     bit = '1'
                 mantissa_bin += bit
 
@@ -64,28 +64,28 @@ class Writer:
 
             self.writeUInt32(as_integer)
 
-    def writeUInt32(self, integer: int):
+    def writeUInt32(self, integer):
         self.writeUInteger(integer, 4)
 
-    def writeInt32(self, integer: int):
+    def writeInt32(self, integer):
         self.writeInteger(integer, 4)
 
-    def writeNUInt16(self, integer: int):
+    def writeNUInt16(self, integer):
         self.writeUInt16(round(integer * 65535))
 
-    def writeUInt16(self, integer: int):
+    def writeUInt16(self, integer):
         self.writeUInteger(integer, 2)
 
-    def writeNInt16(self, integer: int):
+    def writeNInt16(self, integer):
         self.writeInt16(round(integer * 32512))
 
-    def writeInt16(self, integer: int):
+    def writeInt16(self, integer):
         self.writeInteger(integer, 2)
 
-    def writeUInt8(self, integer: int):
+    def writeUInt8(self, integer):
         self.writeUInteger(integer)
 
-    def writeInt8(self, integer: int):
+    def writeInt8(self, integer):
         self.writeInteger(integer)
 
     def writeBool(self, boolean: bool):
@@ -109,11 +109,11 @@ class Writer:
     writeUByte = writeUInt8
     writeByte = writeInt8
 
-    def writeChar(self, string: str):
+    def writeChar(self, string):
         for char in list(string):
             self.buffer += char.encode('utf-8')
 
-    def writeString(self, string: str):
+    def writeString(self, string):
         encoded = string.encode('utf-8')
         self.writeUShort(len(encoded))
         self.buffer += encoded

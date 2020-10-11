@@ -24,7 +24,7 @@ class Writer:
 
         self.write_chunk(head)
 
-        # TODO: make materials
+        # TODO: materials
         # for material in data['materials']:
         #     mate = MATE(header)
         #     mate.from_dict(material)
@@ -37,7 +37,7 @@ class Writer:
 
             self.write_chunk(geom)
 
-        # TODO: make cameras
+        # TODO: cameras
         for camera in data['cameras']:
             came = CAME(header)
             came.from_dict(camera)

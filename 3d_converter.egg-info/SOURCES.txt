@@ -8,11 +8,9 @@ models_converter/__init__.py
 models_converter/chunks/__init__.py
 models_converter/chunks/chunk.py
 models_converter/formats/__init__.py
-models_converter/formats/dae_read.py
-models_converter/formats/dae_write.py
+models_converter/formats/dae.py
 models_converter/formats/gltf.py
-models_converter/formats/obj_read.py
-models_converter/formats/obj_write.py
+models_converter/formats/obj.py
 models_converter/formats/scw.py
 models_converter/utils/__init__.py
 models_converter/utils/reader.py
