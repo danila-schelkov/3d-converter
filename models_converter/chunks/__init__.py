@@ -401,7 +401,7 @@ class CAME(Chunk, Writer, Reader):
         self.chunk_name = 'CAME'
 
     def parse(self, buffer: bytes):
-        super(Reader).__init__(buffer=buffer)
+        Reader.__init__(self, buffer=buffer)
 
         setattr(self, 'name', self.readString())
         setattr(self, 'v1', self.readFloat())

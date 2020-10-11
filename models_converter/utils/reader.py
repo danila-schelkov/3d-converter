@@ -1,16 +1,16 @@
 class Reader:
-    def __init__(self, buffer, endian='big'):
+    def __init__(self, buffer: bytes, endian: str = 'big'):
         self.buffer = buffer
         self.endian = endian
         self.i = 0
 
-    def read(self, length=1):
+    def read(self, length: int = 1) -> bytes:
         result = self.buffer[self.i:self.i + length]
         self.i += length
 
         return result
 
-    def readUInteger(self, length=1):
+    def readUInteger(self, length: int = 1) -> int:
         result = 0
         for x in range(length):
             byte = self.buffer[self.i]
@@ -24,20 +24,20 @@ class Reader:
 
         return result
 
-    def readInteger(self, length=1):
+    def readInteger(self, length: int = 1) -> int:
         integer = self.readUInteger(length)
         result = integer
         if integer > 2 ** (length * 8) / 2:
             result -= 2 ** (length * 8)
         return result
 
-    def readUInt64(self):
+    def readUInt64(self) -> int:
         return self.readUInteger(8)
 
-    def readInt64(self):
+    def readInt64(self) -> int:
         return self.readInteger(8)
 
-    def readFloat(self):
+    def readFloat(self) -> float:
         as_int = self.readUInt32()
         binary = bin(as_int)
         binary = binary[2:].zfill(32)
@@ -63,31 +63,31 @@ class Reader:
         result = sign * 2 ** exponent * mantissa
         return result
 
-    def readUInt32(self):
+    def readUInt32(self) -> int:
         return self.readUInteger(4)
 
-    def readInt32(self):
+    def readInt32(self) -> int:
         return self.readInteger(4)
 
-    def readNUInt16(self):
+    def readNUInt16(self) -> float:
         return self.readUInt16() / 65535
 
-    def readUInt16(self):
+    def readUInt16(self) -> int:
         return self.readUInteger(2)
 
-    def readNInt16(self):
+    def readNInt16(self) -> float:
         return self.readInt16() / 32512
 
-    def readInt16(self):
+    def readInt16(self) -> int:
         return self.readInteger(2)
 
-    def readUInt8(self):
+    def readUInt8(self) -> int:
         return self.readUInteger()
 
-    def readInt8(self):
+    def readInt8(self) -> int:
         return self.readInteger()
 
-    def readBool(self):
+    def readBool(self) -> bool:
         if self.readUInt8() >= 1:
             return True
         else:
@@ -108,12 +108,12 @@ class Reader:
     readUByte = readUInt8
     readByte = readInt8
 
-    def readChar(self, length=1):
+    def readChar(self, length: int = 1) -> str:
         return self.read(length).decode('utf-8')
 
-    def readString(self):
+    def readString(self) -> str:
         length = self.readUShort()
         return self.readChar(length)
 
-    def tell(self):
+    def tell(self) -> int:
         return self.i
