@@ -162,7 +162,8 @@ class GEOM(Chunk, Writer, Reader):
             vertex = []
             vertex_type = self.readString()
             vertex_index = self.readUByte()
-            vertex_shorts = self.readUShort()
+            self.readUByte()  # sub_index
+            vertex_stride = self.readUByte()
             vertex_scale = self.readFloat()
             vertex_count = self.readUInt32()
 
@@ -171,7 +172,7 @@ class GEOM(Chunk, Writer, Reader):
 
             for x1 in range(vertex_count):
                 coordinates_massive = []
-                for x2 in range(vertex_shorts):
+                for x2 in range(vertex_stride):
                     coordinate = self.readShort()
                     coordinates_massive.append(coordinate / 32512)
                 if vertex_type == 'TEXCOORD':
@@ -303,7 +304,8 @@ class GEOM(Chunk, Writer, Reader):
         for vertex in vertices:
             self.writeString(vertex['type'])
             self.writeUByte(vertex['index'])
-            self.writeUShort(len(vertex['vertex'][0]))
+            self.writeUByte(0)  # sub_index
+            self.writeUByte(len(vertex['vertex'][0]))
             self.writeFloat(vertex['scale'])
             self.writeUInt32(len(vertex['vertex']))
             for coordinates_massive in vertex['vertex']:
@@ -350,10 +352,11 @@ class GEOM(Chunk, Writer, Reader):
 
                     if weight > 1:
                         weight = 1
-                    elif weight < 1:
+                    elif weight < 0:
                         weight = 0
-
+                        
                     weight = int(weight * 65535)
+
                     temp_list.append([joint_id, weight])
                 past_index += vcount
                 while len(temp_list) < 4:
@@ -434,10 +437,10 @@ class NODE(Chunk, Writer, Reader):
 
         nodes_count = self.readUShort()
         for node in range(nodes_count):
-            node_data = {}
-
-            node_data['name'] = self.readString()
-            node_data['parent'] = self.readString()
+            node_data = {
+                'name': self.readString(),
+                'parent': self.readString()
+            }
 
             instances_count = self.readUShort()
             node_data['instances'] = [{}] * instances_count
@@ -465,13 +468,18 @@ class NODE(Chunk, Writer, Reader):
             frames_count = self.readUShort()
             node_data['frames'] = []
             if frames_count > 0:
+                rotation = {'x': 0, 'y': 0, 'z': 0, 'w': 0}
+                scale_x, scale_y, scale_z = 0, 0, 0
+                pos_x, pos_y, pos_z = 0, 0, 0
+
                 settings = list(bin(self.readUByte())[2:].zfill(8))
                 settings = [bool(int(value)) for value in settings]
                 node_data['frames_settings'] = settings
                 for frame in range(frames_count):
-                    frame_data = {}
+                    frame_data = {
+                        'frame_id': self.readUShort()
+                    }
 
-                    frame_data['frame_id'] = self.readUShort()
                     if settings[7] or frame == 0:  # Rotation
                         rotation = {
                             'x': self.readNShort(),
