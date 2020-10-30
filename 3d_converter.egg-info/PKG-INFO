@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: 3d-converter
-Version: 0.7.5
+Version: 0.7.6
 Summary: Python 3D Models Converter
 Home-page: https://github.com/vorono4ka/3d-converter
 Author: Vorono4ka
@@ -8,7 +8,7 @@ Author-email: crowo4ka@gmail.com
 License: GPLv3
 Description: ## `Python 3D Models Converter`
         
-        **Version**: 0.7.4
+        **Version**: 0.7.6
         
         ### Thanks a lot for motivating [AMIRMISTIK]!
         

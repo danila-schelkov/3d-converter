@@ -1,7 +1,14 @@
-class Chunk:
+from ....utils.reader import Reader
+from ....utils.writer import Writer
+
+
+class Chunk(Writer, Reader):
     def __init__(self, header=None):
+        super().__init__()
+
         if header is None:
             header = {}
+
         self.header = header
         self.chunk_name = ''
 
@@ -53,9 +60,11 @@ class Chunk:
         setattr(self, key, value)
 
     def parse(self, buffer: bytes):
-        pass
+        Reader.__init__(self, buffer, 'big')
 
     def encode(self):
+        Writer.__init__(self, 'big')
+
         self.length = len(self.buffer)
 
     get = __getitem__

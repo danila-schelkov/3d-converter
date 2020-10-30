@@ -318,7 +318,7 @@ class Writer:
                                    symbol=symbol,
                                    target=f'#{target}')
             else:
-                if parent_name != '':
+                if parent_name != '' and len(node_data['instances']) == 0:
                     node.attrib['type'] = 'JOINT'
 
             # <AnimationVariables>
@@ -424,6 +424,10 @@ class Parser:
             instances = instance_geometry.extend(instance_controller)
 
             children = self.node(node.findall('collada:node', self.namespaces))
+
+            if 'name' not in node.attrib:
+                node.attrib['name'] = node.attrib['id']
+
             node_data = {
                 'name': node.attrib['name'],
                 'instances': []
@@ -453,7 +457,7 @@ class Parser:
                     controller_url = instance_controller.attrib['url']
                     node_data['instances'][0]['instance_name'] = controller_url[1:]
 
-                node_data['instances'][0]['binds'] = binds
+                node_data['instances'][len(node_data['instances'])-1]['binds'] = binds
 
             matrix = node.findall('collada:matrix', self.namespaces)
             if matrix:
