@@ -51,7 +51,7 @@ class GEOM(Chunk):
 
             inputs.append({
                 'type': vertex_type,
-                'offset': x,
+                'offset': vertex_index,
                 'name': f'{vertex_type.lower()}_0'
             })
 

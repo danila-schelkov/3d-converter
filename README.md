@@ -1,6 +1,6 @@
 ## `Python 3D Models Converter`
 
-**Version**: 0.7.7
+**Version**: 0.7.8
 
 ### Thanks a lot for motivating [AMIRMISTIK]!
 

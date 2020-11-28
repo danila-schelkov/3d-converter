@@ -766,7 +766,7 @@ class Parser:
                 vertex.append(vertex_temp[x: x + len(accessor)])
 
             self.geometry_info['vertices'].append({'type': semantic,
-                                                   'index': 0,
+                                                   'index': len(self.geometry_info['vertices']),
                                                    'scale': scale,
                                                    'vertex': vertex})
         for triangle in triangles:
@@ -775,15 +775,12 @@ class Parser:
             p = triangle.find('collada:p', self.namespaces)
             polygons_temp = [int(integer) for integer in p.text.split()]
 
-            polygons = []
-            for x in range(0, len(polygons_temp), len(inputs) * 3):
-                temp_list = []
-                for x1 in range(len(inputs)):
-                    second_temp_list = []
-                    for x2 in range(3):
-                        second_temp_list.append(polygons_temp[x + x1 + x2])
-                    temp_list.append(second_temp_list)
-                polygons.append(temp_list)
+            polygons = [
+                [
+                    polygons_temp[polygon_index + point_index:polygon_index + point_index + 3]
+                    for point_index in range(0, len(inputs) * 3, 3)
+                ] for polygon_index in range(0, len(polygons_temp), len(inputs) * 3)
+            ]
             self.geometry_info['materials'].append({'name': triangles_material,
                                                     'polygons': polygons})
         self.parsed['geometries'].append(self.geometry_info)
