@@ -421,7 +421,7 @@ class Parser:
             instance_geometry = node.findall('collada:instance_geometry', self.namespaces)
             instance_controller = node.findall('collada:instance_controller', self.namespaces)
 
-            instances = instance_geometry.extend(instance_controller)
+            instances = [*instance_geometry, *instance_controller]
 
             children = self.node(node.findall('collada:node', self.namespaces))
 
@@ -434,7 +434,7 @@ class Parser:
             }
 
             for instance in instances:
-                node_data['instances'] = [{}]
+                instance_data = {}
                 binds = []
 
                 bind_material = instance.find('collada:bind_material', self.namespaces)
@@ -447,17 +447,18 @@ class Parser:
                     })
 
                 if instance_geometry:
-                    node_data['instances'][0]['instance_type'] = 'GEOM'
+                    instance_data['instance_type'] = 'GEOM'
 
-                    geometry_url = instance_geometry.attrib['url']
-                    node_data['instances'][0]['instance_name'] = geometry_url[1:]
+                    geometry_url = instance.attrib['url']
+                    instance_data['instance_name'] = geometry_url[1:]
                 elif instance_controller:
-                    node_data['instances'][0]['instance_type'] = 'CONT'
+                    instance_data['instance_type'] = 'CONT'
 
-                    controller_url = instance_controller.attrib['url']
-                    node_data['instances'][0]['instance_name'] = controller_url[1:]
+                    controller_url = instance.attrib['url']
+                    instance_data['instance_name'] = controller_url[1:]
 
-                node_data['instances'][len(node_data['instances'])-1]['binds'] = binds
+                instance_data['binds'] = binds
+                node_data['instances'][len(node_data['instances'])-1] = instance_data
 
             matrix = node.findall('collada:matrix', self.namespaces)
             if matrix:
@@ -615,29 +616,32 @@ class Parser:
                 controller = None
                 geometry = None
 
-                if node['instance_type'] == 'CONT':
+                if instance['instance_type'] == 'CONT':
                     controller = self.library_controllers \
                         .find(f'collada:controller[@id="{instance["instance_name"]}"]', self.namespaces)
 
                     geometry_url = controller[0].attrib['source'][1:]
                     geometry = self.library_geometries \
                         .find(f'collada:geometry[@id="{geometry_url}"]', self.namespaces)
-                elif node['instance_type'] == 'GEOM':
+                elif instance['instance_type'] == 'GEOM':
                     geometry = self.library_geometries \
                         .find(f'collada:geometry[@id="{instance["instance_name"]}"]', self.namespaces)
 
-                node['instance_name'] = geometry.attrib['name']
+                if not ('name' in geometry.attrib):
+                    geometry.attrib['name'] = geometry.attrib['id']
+
+                instance['instance_name'] = geometry.attrib['name']
 
                 for suffix in ['-skin', '-cont']:
-                    node['instance_name'] = node['instance_name'].removesuffix(suffix)
+                    instance['instance_name'] = instance['instance_name'].removesuffix(suffix)
                 for suffix in ['-mesh', '-geom']:
-                    node['instance_name'] = node['instance_name'].removesuffix(suffix)
+                    instance['instance_name'] = instance['instance_name'].removesuffix(suffix)
 
                 self.parsed['nodes'][node_index] = node
 
                 if geometry is not None:
                     self.geometry_info = {'name': '',
-                                          'group': node['parent'],
+                                          'group': '',  # node['parent'],
                                           'vertices': [],
                                           'have_bind_matrix': False,
                                           'materials': []}
@@ -724,6 +728,7 @@ class Parser:
             name = name[:-5]
 
         self.geometry_info['name'] = name
+        self.geometry_info['group'] = name
 
         mesh = geometry[0]
 
