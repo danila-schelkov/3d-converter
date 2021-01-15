@@ -509,7 +509,6 @@ class Parser:
     def __init__(self, file_data):
         self.parsed = {'header': {'version': 2,
                                   'frame_rate': 30,
-                                  'last_frame': 0,
                                   'materials_file': 'sc3d/character_materials.scw'},
                        'materials': [],
                        'geometries': [],
@@ -586,7 +585,6 @@ class Parser:
 
                     material_data = {
                         'name': material_name,
-                        'shader': 'shader/uber.vsh',
                         'effect': {
                             'ambient': [0, 0, 0, 255],  # ambient_data,
                             'diffuse': '.',  # diffuse_data,

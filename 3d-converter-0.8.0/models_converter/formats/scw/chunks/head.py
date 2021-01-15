@@ -12,7 +12,7 @@ class HEAD(Chunk):
         setattr(self, 'version', self.readUShort())
         setattr(self, 'frame_rate', self.readUShort())
         setattr(self, 'v1', self.readUShort())
-        setattr(self, 'animation_end_frame', self.readUShort())
+        setattr(self, 'v2', self.readUShort())
         setattr(self, 'materials_file', self.readString())
         if self.get('version') == 2:
             setattr(self, 'v3', self.readUByte())
@@ -23,7 +23,7 @@ class HEAD(Chunk):
         self.writeUShort(2)  # getattr(self, 'version')
         self.writeUShort(getattr(self, 'frame_rate'))
         self.writeUShort(0)  # getattr(self, 'v1')
-        self.writeUShort(getattr(self, 'last_frame'))  # animation end frame
+        self.writeUShort(249)  # getattr(self, 'v2')
         self.writeString(getattr(self, 'materials_file'))
         self.writeUByte(0)  # getattr(self, 'v3')
 

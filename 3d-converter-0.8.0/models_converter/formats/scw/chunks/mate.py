@@ -158,7 +158,7 @@ class MATE(Chunk):
             self.writeUByte(g)
             self.writeUByte(b)
 
-        self.writeString('')  # getattr(self, 'opacity_texture')
+        self.writeString(getattr(self, 'opacity_texture'))
         self.writeFloat(1)  # getattr(self, 'v5')
         self.writeFloat(0)  # getattr(self, 'v6')
 
@@ -166,7 +166,7 @@ class MATE(Chunk):
         self.writeString(effect['lightmaps']['specular'])
 
         if self.header['version'] == 2:
-            self.writeString('')  # getattr(self, 'v7')
+            self.writeString(getattr(self, 'v7'))
 
         self.writeUInt32(effect['shader_define_flags'])
 
