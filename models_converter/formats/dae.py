@@ -285,6 +285,22 @@ class Writer:
                                   id='3dConverterScene',
                                   name='3d-Converter Scene')
 
+        not_joint_nodes = []
+        node_index = 0
+
+        parent_name = None
+        while node_index < len(not_joint_nodes) or len(not_joint_nodes) == 0:
+            if len(not_joint_nodes) > 0:
+                parent_name = not_joint_nodes[node_index]
+
+            for _node in data['nodes']:
+                if _node['instances'] or _node['name'] == parent_name:
+                    if not (_node['name'] in not_joint_nodes):
+                        not_joint_nodes.append(_node['name'])
+                    if not (_node['parent'] in not_joint_nodes):
+                        not_joint_nodes.append(_node['parent'])
+            node_index += 1
+
         for node_data in data['nodes']:
             parent_name = node_data['parent']
             parent = visual_scene
@@ -318,7 +334,7 @@ class Writer:
                                    symbol=symbol,
                                    target=f'#{target}')
             else:
-                if parent_name != '' and len(node_data['instances']) == 0:
+                if not (node_data['name'] in not_joint_nodes):
                     node.attrib['type'] = 'JOINT'
 
             # <AnimationVariables>

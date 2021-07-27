@@ -11,20 +11,23 @@ class HEAD(Chunk):
 
         setattr(self, 'version', self.readUShort())
         setattr(self, 'frame_rate', self.readUShort())
-        setattr(self, 'v1', self.readUShort())
-        setattr(self, 'animation_end_frame', self.readUShort())
+        setattr(self, 'first_frame', self.readUShort())
+        setattr(self, 'last_frame', self.readUShort())
         setattr(self, 'materials_file', self.readString())
-        if self.get('version') == 2:
+        if self.get('version') >= 1:
             setattr(self, 'v3', self.readUByte())
 
     def encode(self):
         super().encode()
 
-        self.writeUShort(2)  # getattr(self, 'version')
+        setattr(self, 'version', 2)
+
+        self.writeUShort(getattr(self, 'version'))
         self.writeUShort(getattr(self, 'frame_rate'))
-        self.writeUShort(0)  # getattr(self, 'v1')
-        self.writeUShort(getattr(self, 'last_frame'))  # animation end frame
+        self.writeUShort(getattr(self, 'first_frame'))
+        self.writeUShort(getattr(self, 'last_frame'))
         self.writeString(getattr(self, 'materials_file'))
-        self.writeUByte(0)  # getattr(self, 'v3')
+        if self.get('version') >= 1:
+            self.writeUByte(0)  # getattr(self, 'v3')
 
         self.length = len(self.buffer)
