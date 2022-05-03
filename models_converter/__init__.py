@@ -1,5 +1,4 @@
 __all__ = [
     'formats',
-    'chunks',
-    'utils'
+    'utilities'
 ]

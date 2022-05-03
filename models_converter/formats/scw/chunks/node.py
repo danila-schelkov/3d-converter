@@ -1,145 +1,125 @@
+from models_converter.utilities.math import Vector3
+from models_converter.utilities.math import Quaternion
 from . import Chunk
+from ...universal.node import Node
 
 
 class NODE(Chunk):
-    def __init__(self, header: dict):
+    def __init__(self, header):
         super().__init__(header)
         self.chunk_name = 'NODE'
 
+        self.nodes = []
+
     def parse(self, buffer: bytes):
         super().parse(buffer)
-        nodes = []
 
         nodes_count = self.readUShort()
-        for node in range(nodes_count):
-            node_data = {
-                'name': self.readString(),
-                'parent': self.readString()
-            }
+        for node_index in range(nodes_count):
+            node = Node(
+                name=self.readString(),
+                parent=self.readString()
+            )
 
             instances_count = self.readUShort()
-            node_data['instances'] = [{}] * instances_count
             for x in range(instances_count):
-                instance_type = self.readChar(4)
-                instance_name = self.readString()
+                instance = Node.Instance(
+                    instance_type=self.readChars(4),
+                    name=self.readString()
+                )
 
-                node_data['instances'][x] = {}
-                if instance_type in ['GEOM', 'CONT']:
+                if instance.get_type() in ('GEOM', 'CONT'):
                     materials_count = self.readUShort()
-                    binds = []
                     for bind in range(materials_count):
-                        binds.append({})
                         symbol = self.readString()
                         target = self.readString()
-                        binds[bind] = {'symbol': symbol,
-                                       'target': target}
-                    node_data['instances'][x]['binds'] = binds
-                elif instance_type in ['CAME']:
-                    target = self.readString()
-                    node_data['instances'][x]['target'] = target
-                node_data['instances'][x]['instance_name'] = instance_name
-                node_data['instances'][x]['instance_type'] = instance_type
+                        instance.add_bind(symbol, target)
+                elif instance.get_type() == 'CAME':
+                    instance.set_target(self.readString())
+                node.add_instance(instance)
 
             frames_count = self.readUShort()
-            node_data['frames'] = []
             if frames_count > 0:
-                rotation = {'x': 0, 'y': 0, 'z': 0, 'w': 0}
-                scale_x, scale_y, scale_z = 0, 0, 0
-                pos_x, pos_y, pos_z = 0, 0, 0
+                rotation = Quaternion()
+                position = Vector3()
+                scale = Vector3()
 
-                settings = list(bin(self.readUByte())[2:].zfill(8))
-                settings = [bool(int(value)) for value in settings]
-                node_data['frames_settings'] = settings
-                for frame in range(frames_count):
-                    frame_data = {
-                        'frame_id': self.readUShort()
-                    }
+                node.frames_settings = self.readUByte()
+                for frame_index in range(frames_count):
+                    frame = Node.Frame(self.readUShort())
 
-                    if settings[7] or frame == 0:  # Rotation
-                        rotation = {
-                            'x': self.readNShort(),
-                            'y': self.readNShort(),
-                            'z': self.readNShort(),
-                            'w': self.readNShort()
-                        }
+                    if node.frames_settings & 1 or frame_index == 0:  # Rotation
+                        rotation.x = self.readNShort()
+                        rotation.y = self.readNShort()
+                        rotation.z = self.readNShort()
+                        rotation.w = self.readNShort()
 
-                    if settings[4] or frame == 0:  # Position X
-                        pos_x = self.readFloat()
-                    if settings[5] or frame == 0:  # Position Y
-                        pos_y = self.readFloat()
-                    if settings[6] or frame == 0:  # Position Z
-                        pos_z = self.readFloat()
+                    if node.frames_settings & 2 or frame_index == 0:  # Position X
+                        position.x = self.readFloat()
+                    if node.frames_settings & 4 or frame_index == 0:  # Position Y
+                        position.y = self.readFloat()
+                    if node.frames_settings & 8 or frame_index == 0:  # Position Z
+                        position.z = self.readFloat()
 
-                    if settings[1] or frame == 0:  # Scale X
-                        scale_x = self.readFloat()
-                    if settings[2] or frame == 0:  # Scale Y
-                        scale_y = self.readFloat()
-                    if settings[3] or frame == 0:  # Scale Z
-                        scale_z = self.readFloat()
+                    if node.frames_settings & 16 or frame_index == 0:  # Scale X
+                        scale.x = self.readFloat()
+                    if node.frames_settings & 32 or frame_index == 0:  # Scale Y
+                        scale.y = self.readFloat()
+                    if node.frames_settings & 64 or frame_index == 0:  # Scale Z
+                        scale.z = self.readFloat()
 
-                    frame_data['rotation'] = rotation
-                    frame_data['position'] = {
-                        'x': pos_x,
-                        'y': pos_y,
-                        'z': pos_z
-                    }
-                    frame_data['scale'] = {
-                        'x': scale_x,
-                        'y': scale_y,
-                        'z': scale_z
-                    }
+                    frame.set_rotation(rotation.clone())
+                    frame.set_position(position.clone())
+                    frame.set_scale(scale.clone())
 
-                    node_data['frames'].append(frame_data)
-            nodes.append(node_data)
-        setattr(self, 'nodes', nodes)
+                    node.add_frame(frame)
+            self.nodes.append(node)
 
     def encode(self):
         super().encode()
 
-        self.writeUShort(len(self.get('nodes')))
-        for node in self.get('nodes'):
-            self.writeString(node['name'])
-            self.writeString(node['parent'])
+        self.writeUShort(len(self.nodes))
+        for node in self.nodes:
+            self.writeString(node.get_name())
+            self.writeString(node.get_parent())
 
-            self.writeUShort(len(node['instances']))
-            for instance in node['instances']:
-                self.writeChar(instance['instance_type'])
-                self.writeString(instance['instance_name'])
-                self.writeUShort(len(instance['binds']))
-                for bind in instance['binds']:
-                    self.writeString(bind['symbol'])
-                    self.writeString(bind['target'])
+            self.writeUShort(len(node.get_instances()))
+            for instance in node.get_instances():
+                self.writeChar(instance.get_type())
+                self.writeString(instance.get_name())
+                self.writeUShort(len(instance.get_binds()))
+                for bind in instance.get_binds():
+                    self.writeString(bind.get_symbol())
+                    self.writeString(bind.get_target())
 
-            if 'frames_settings' in node:
-                frames_settings = node['frames_settings']
-            else:
-                frames_settings = None
-            self.encode_frames(node['frames'], frames_settings)
+            self._encode_frames(node.get_frames(), node.frames_settings)
 
         self.length = len(self.buffer)
 
-    def encode_frames(self, frames, frames_settings):
+    def _encode_frames(self, frames, frames_settings):
         self.writeUShort(len(frames))
         if len(frames) > 0:
-            self.writeUByte(int(''.join([('1' if item else '0') for item in frames_settings])[::], 2))
+            self.writeUByte(frames_settings)
             for frame in frames:
-                self.writeUShort(frame['frame_id'])
-                if frames_settings[7] or frames.index(frame) == 0:  # Rotation
-                    self.writeNShort(frame['rotation']['x'])
-                    self.writeNShort(frame['rotation']['y'])
-                    self.writeNShort(frame['rotation']['z'])
-                    self.writeNShort(frame['rotation']['w'])
+                self.writeUShort(frame.get_id())
+                if frames_settings & 128 or frames.index(frame) == 0:  # Rotation
+                    rotation = frame.get_rotation()
 
-                if frames_settings[4] or frames.index(frame) == 0:  # Position X
-                    self.writeFloat(frame['position']['x'])
-                if frames_settings[5] or frames.index(frame) == 0:  # Position Y
-                    self.writeFloat(frame['position']['y'])
-                if frames_settings[6] or frames.index(frame) == 0:  # Position Z
-                    self.writeFloat(frame['position']['z'])
+                    self.writeNShort(rotation.x)
+                    self.writeNShort(rotation.y)
+                    self.writeNShort(rotation.z)
+                    self.writeNShort(rotation.w)
 
-                if frames_settings[1] or frames.index(frame) == 0:  # Scale X
-                    self.writeFloat(frame['scale']['x'])
-                if frames_settings[2] or frames.index(frame) == 0:  # Scale Y
-                    self.writeFloat(frame['scale']['y'])
-                if frames_settings[3] or frames.index(frame) == 0:  # Scale Z
-                    self.writeFloat(frame['scale']['z'])
+                if frames_settings & 16 or frames.index(frame) == 0:  # Position X
+                    self.writeFloat(frame.get_position().x)
+                if frames_settings & 32 or frames.index(frame) == 0:  # Position Y
+                    self.writeFloat(frame.get_position().y)
+                if frames_settings & 64 or frames.index(frame) == 0:  # Position Z
+                    self.writeFloat(frame.get_position().z)
+
+                if frames_settings & 2 or frames.index(frame) == 0:  # Scale X
+                    self.writeFloat(frame.get_scale().x)
+                if frames_settings & 4 or frames.index(frame) == 0:  # Scale Y
+                    self.writeFloat(frame.get_scale().y)
+                if frames_settings & 8 or frames.index(frame) == 0:  # Scale Z
+                    self.writeFloat(frame.get_scale().z)

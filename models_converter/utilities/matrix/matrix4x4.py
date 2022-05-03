@@ -1,5 +1,6 @@
 from .matrix3x3 import Matrix3x3
 from . import Matrix
+from ..math import Vector3, Quaternion
 
 
 class Matrix4x4(Matrix):
@@ -187,8 +188,8 @@ class Matrix4x4(Matrix):
 
         self.find_cofactor()
 
-    def put_rotation(self, xyz: tuple, w: float):
-        x, y, z = xyz
+    def put_rotation(self, quaterion: Quaternion):
+        x, y, z, w = quaterion.x, quaterion.y, quaterion.z, quaterion.w
 
         rotation_matrix = (
             (1-2*y**2-2*z**2, 2*x*y-2*z*w, 2*x*z+2*y*w, 0),  # x
@@ -199,61 +200,39 @@ class Matrix4x4(Matrix):
 
         self.rotation_matrix = Matrix4x4(matrix=rotation_matrix)
 
-    def put_position(self, xyz: tuple):
-        x, y, z = xyz
-
+    def put_position(self, position: Vector3):
         translation_matrix = (
-            (1, 0, 0, x),  # x
-            (0, 1, 0, y),  # y
-            (0, 0, 1, z),  # z
+            (1, 0, 0, position.x),  # x
+            (0, 1, 0, position.y),  # y
+            (0, 0, 1, position.z),  # z
             (0, 0, 0, 1)
         )
 
         self.translation_matrix = Matrix4x4(matrix=translation_matrix)
 
-    def put_scale(self, xyz: tuple):
-        x, y, z = xyz
-
+    def put_scale(self, scale: Vector3):
         scale_matrix = (
-            (x, 0, 0, 0),
-            (0, y, 0, 0),
-            (0, 0, z, 0),
+            (scale.x, 0, 0, 0),
+            (0, scale.y, 0, 0),
+            (0, 0, scale.z, 0),
             (0, 0, 0, 1)
         )
 
         self.scale_matrix = Matrix4x4(matrix=scale_matrix)
 
-    def get_rotation(self) -> dict:
-        rotation = {
-            'x': 0,
-            'y': 0,
-            'z': 0,
-            'w': 0
-        }
+    def get_rotation(self) -> Quaternion:
+        return Quaternion()
 
-        return rotation
-
-    def get_position(self) -> dict:
-        position = (self.matrix[0][3], self.matrix[1][3], self.matrix[2][3])
+    def get_position(self) -> Vector3:
+        position = Vector3(self.matrix[0][3], self.matrix[1][3], self.matrix[2][3])
 
         self.put_position(position)
 
-        position = {
-            'x': position[0],
-            'y': position[1],
-            'z': position[2]
-        }
         return position
 
-    def get_scale(self) -> dict:
-        xyz = (1, 1, 1)
+    def get_scale(self) -> Vector3:
+        scale = Vector3(1, 1, 1)
 
-        self.put_scale(xyz)
-
-        scale = {
-            'x': xyz[0],
-            'y': xyz[1],
-            'z': xyz[2]
-        }
+        self.put_scale(scale)
 
         return scale

@@ -2,7 +2,7 @@ from . import Chunk
 
 
 class MATE(Chunk):
-    def __init__(self, header: dict):
+    def __init__(self, header):
         super().__init__(header)
         self.chunk_name = 'MATE'
 
@@ -82,7 +82,7 @@ class MATE(Chunk):
             'specular': self.readString()
         }
 
-        if self.header['version'] == 2:
+        if self.header.version == 2:
             setattr(self, 'v7', self.readString())
 
         shader_define_flags = self.readUInt32()

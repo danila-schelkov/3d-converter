@@ -108,12 +108,12 @@ class Reader:
     readUByte = readUInt8
     readByte = readInt8
 
-    def readChar(self, length: int = 1) -> str:
+    def readChars(self, length: int = 1) -> str:
         return self.read(length).decode('utf-8')
 
     def readString(self) -> str:
         length = self.readUShort()
-        return self.readChar(length)
+        return self.readChars(length)
 
     def tell(self) -> int:
         return self.i

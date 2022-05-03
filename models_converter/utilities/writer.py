@@ -1,5 +1,8 @@
+from typing import Literal
+
+
 class Writer:
-    def __init__(self, endian='big'):
+    def __init__(self, endian: Literal['big', 'little'] = 'big'):
         self.endian = endian
         self.buffer = b''
 
@@ -114,6 +117,9 @@ class Writer:
             self.buffer += char.encode('utf-8')
 
     def writeString(self, string: str) -> None:
+        if string is None:
+            string = ''
+
         encoded = string.encode('utf-8')
         self.writeUShort(len(encoded))
         self.buffer += encoded

@@ -1,17 +1,23 @@
 from . import Chunk
+from ...universal import Geometry
 
 
 class GEOM(Chunk):
-    def __init__(self, header: dict):
+    def __init__(self, header):
         super().__init__(header)
         self.chunk_name = 'GEOM'
+
+        self.geometry: Geometry or None = None
 
     def parse(self, buffer: bytes):
         super().parse(buffer)
 
-        setattr(self, 'name', self.readString())
-        setattr(self, 'group', self.readString())
-        if self.header['version'] < 2:
+        self.geometry = Geometry(
+            name=self.readString(),
+            group=self.readString()
+        )
+
+        if self.header.version < 2:
             matrix = []
             for x in range(4):
                 temp_list = []
@@ -19,17 +25,13 @@ class GEOM(Chunk):
                     temp_list.append(self.readFloat())
                 matrix.append(temp_list)
 
-        self.parse_vertices()
-        self.parse_skin()
-        self.parse_materials()
+        self._parse_vertices()
+        self._parse_skin()
+        self._parse_materials()
 
-    def parse_vertices(self):
-        vertices = []
-        inputs = []
-
+    def _parse_vertices(self):
         vertex_count = self.readUByte()
         for x in range(vertex_count):
-            vertex = []
             vertex_type = self.readString()
             vertex_index = self.readUByte()
             self.readUByte()  # sub_index
@@ -40,229 +42,166 @@ class GEOM(Chunk):
             if vertex_type == 'VERTEX':
                 vertex_type = 'POSITION'
 
+            coordinates = []
             for x1 in range(vertex_count):
-                coordinates_massive = []
-                for x2 in range(vertex_stride):
-                    coordinate = self.readShort()
-                    coordinates_massive.append(coordinate / 32512)
+                coordinates_massive = [self.readNShort() for _ in range(vertex_stride)]
+
                 if vertex_type == 'TEXCOORD':
                     coordinates_massive[1::2] = [1 - x for x in coordinates_massive[1::2]]
-                vertex.append(coordinates_massive)
+                coordinates.append(coordinates_massive)
 
-            inputs.append({
-                'type': vertex_type,
-                'offset': vertex_index,
-                'name': f'{vertex_type.lower()}_0'
-            })
+            self.geometry.add_vertex(Geometry.Vertex(
+                name=f'{vertex_type.lower()}_0',
+                vertex_type=vertex_type,
+                vertex_index=vertex_index,
+                vertex_scale=vertex_scale,
+                points=coordinates)
+            )
 
-            vertices.append({
-                'name': f'{vertex_type.lower()}_0',
-                'type': vertex_type,
-                'index': vertex_index,
-                'scale': vertex_scale,
-                'vertex': vertex
-            })
-        setattr(self, 'inputs', inputs)
-        setattr(self, 'vertices', vertices)
+    def _parse_skin(self):
+        has_controller = self.readBool()
+        if has_controller:
+            self.geometry.set_controller_bind_matrix([self.readFloat() for _ in range(16)])
 
-    def parse_skin(self):
-        bind_matrix = []
+        self._parse_joints()
+        self._parse_weights()
 
-        setattr(self, 'have_bind_matrix', self.readBool())
-        if getattr(self, 'have_bind_matrix'):
-            for x in range(16):
-                bind_matrix.append(self.readFloat())
-
-        setattr(self, 'bind_matrix', bind_matrix)
-
-        self.parse_joints()
-        self.parse_weights()
-
-    def parse_joints(self):
-        joints = []
-
+    def _parse_joints(self):
         joint_counts = self.readUByte()
         for x in range(joint_counts):
-            joint_matrix = []
             joint_name = self.readString()
-            for x1 in range(16):
-                joint_matrix.append(self.readFloat())
-            joints.append({'name': joint_name, 'matrix': joint_matrix})
+            joint_matrix = [self.readFloat() for _ in range(16)]
 
-        setattr(self, 'joints', joints)
+            self.geometry.add_joint(Geometry.Joint(joint_name, joint_matrix))
 
-    def parse_weights(self):
-        vertex_weights = []
-        weights = []
-        vcount = []
-
+    def _parse_weights(self):
         vertex_weights_count = self.readUInt32()
         for x in range(vertex_weights_count):
-            vcount.append(0)
             joint_a = self.readUByte()
             joint_b = self.readUByte()
             joint_c = self.readUByte()
             joint_d = self.readUByte()
-            weight_a = self.readUShort()
-            weight_b = self.readUShort()
-            weight_c = self.readUShort()
-            weight_d = self.readUShort()
-            temp_list = [
-                [joint_a, weight_a],
-                [joint_b, weight_b],
-                [joint_c, weight_c],
-                [joint_d, weight_d]
-            ]
-            for pair in temp_list:
-                if pair[1] != 0:
-                    vcount[x] += 1
-                    vertex_weights.append(pair[0])
-                    if pair[1] / 65535 not in weights:
-                        weights.append(pair[1] / 65535)
-                    vertex_weights.append(weights.index(pair[1] / 65535))
+            weight_a = self.readNUShort()
+            weight_b = self.readNUShort()
+            weight_c = self.readNUShort()
+            weight_d = self.readNUShort()
 
-        setattr(self, 'weights',
-                {
-                    'vertex_weights': vertex_weights,
-                    'weights': weights,
-                    'vcount': vcount
-                })
+            self.geometry.add_weight(Geometry.Weight(joint_a, weight_a))
+            self.geometry.add_weight(Geometry.Weight(joint_b, weight_b))
+            self.geometry.add_weight(Geometry.Weight(joint_c, weight_c))
+            self.geometry.add_weight(Geometry.Weight(joint_d, weight_d))
 
-    def parse_materials(self):
-        materials = []
-
+    def _parse_materials(self):
         materials_count = self.readUByte()
         for x in range(materials_count):
-            polygons = []
             material_name = self.readString()
             self.readString()
-            polygons_count = self.readUShort()
+            triangles_count = self.readUShort()
             inputs_count = self.readUByte()
-            vertex_id_length = self.readUByte()
-            for x1 in range(polygons_count):
-                temp_list = []
-                for x2 in range(3):
-                    second_temp_list = []
-                    for x3 in range(inputs_count):
-                        second_temp_list.append(self.readUInteger(vertex_id_length))
-                    temp_list.append(second_temp_list)
-                polygons.append(temp_list)
-            materials.append({
-                'name': material_name,
-                'inputs': getattr(self, 'inputs'),
-                'polygons': polygons
-            })
+            vertex_index_length = self.readUByte()
 
-        setattr(self, 'materials', materials)
+            triangles = []
+            for x1 in range(triangles_count):
+                triangles.append([
+                    [
+                        self.readUInteger(vertex_index_length)  # Vertex
+                        for _ in range(inputs_count)
+                    ] for _ in range(3)  # 3 points
+                ])
+
+            self.geometry.add_material(Geometry.Material(material_name, triangles))
 
     def encode(self):
         super().encode()
 
-        self.writeString(self.get('name'))
-        self.writeString(self.get('group'))
+        self.writeString(self.geometry.get_name())
+        self.writeString(self.geometry.get_group())
 
-        self.encode_vertices(self.get('vertices'))
+        self._encode_vertices(self.geometry.get_vertices())
 
-        self.encode_skin()
+        self._encode_skin()
 
-        self.encode_materials()
+        self._encode_materials()
 
         self.length = len(self.buffer)
 
-    def encode_vertices(self, vertices: dict):
+    def _encode_vertices(self, vertices):
         self.writeUByte(len(vertices))
         for vertex in vertices:
-            self.writeString(vertex['type'])
-            self.writeUByte(vertex['index'])
+            self.writeString(vertex.get_type())
+            self.writeUByte(vertex.get_index())
             self.writeUByte(0)  # sub_index
-            self.writeUByte(len(vertex['vertex'][0]))
-            self.writeFloat(vertex['scale'])
-            self.writeUInt32(len(vertex['vertex']))
-            for coordinates_massive in vertex['vertex']:
-                if vertex['type'] == 'TEXCOORD':
-                    coordinates_massive[1::2] = [1 - x for x in coordinates_massive[1::2]]
-                for coordinate in coordinates_massive:
+            self.writeUByte(vertex.get_point_size())
+            self.writeFloat(vertex.get_scale())
+            self.writeUInt32(len(vertex.get_points()))
+            for point in vertex.get_points():
+                if vertex.get_type() == 'TEXCOORD':
+                    point[1::2] = [1 - x for x in point[1::2]]
+                for coordinate in point:
                     # coordinate /= vertex['scale']
                     coordinate *= 32512
                     self.writeShort(round(coordinate))
 
-    def encode_skin(self):
-        self.writeBool(self.get('have_bind_matrix'))
-        if self.get('have_bind_matrix'):
-            for x in self.get('bind_matrix'):
+    def _encode_skin(self):
+        self.writeBool(self.geometry.has_controller())
+        if self.geometry.has_controller():
+            for x in self.geometry.get_bind_matrix():
                 self.writeFloat(x)
 
-        self.encode_joints()
+        self._encode_joints()
+        self._encode_weight()
 
-        self.encode_weight()
-
-    def encode_joints(self):
-        if self.get('have_bind_matrix'):
-            self.writeUByte(len(self.get('joints')))
-
-            for joint in self.get('joints'):
-                self.writeString(joint['name'])
-                for x in joint['matrix']:
-                    self.writeFloat(x)
-        else:
+    def _encode_joints(self):
+        if not self.geometry.has_controller():
             self.writeUByte(0)
+            return
 
-    def encode_weight(self):
-        if self.get('have_bind_matrix'):
-            self.writeUInt32(len(self.get('weights')['vcount']))
-            past_index = 0
-            for vcount in self.get('weights')['vcount']:
-                temp_list = []
-                for x in range(vcount):
-                    vertex_weights_index = x * 2 + past_index * 2
-                    joint_id = self.get('weights')['vertex_weights'][vertex_weights_index]
-                    weight_id = self.get('weights')['vertex_weights'][vertex_weights_index + 1]
+        self.writeUByte(len(self.geometry.get_joints()))
 
-                    weight = self.get('weights')['weights'][weight_id]
+        for joint in self.geometry.get_joints():
+            self.writeString(joint.get_name())
+            for x in joint.get_matrix():
+                self.writeFloat(x)
 
-                    if weight > 1:
-                        weight = 1
-                    elif weight < 0:
-                        weight = 0
-
-                    weight = int(weight * 65535)
-
-                    temp_list.append([joint_id, weight])
-                past_index += vcount
-                while len(temp_list) < 4:
-                    temp_list.append([0, 0])
-                for x in temp_list:
-                    self.writeUByte(x[0])
-                for x in temp_list:
-                    self.writeUShort(x[1])
-        else:
+    def _encode_weight(self):
+        if not self.geometry.has_controller():
             self.writeUInt32(0)
+            return
 
-    def encode_materials(self):
-        self.writeUByte(len(self.get('materials')))
-        for material in self.get('materials'):
-            self.writeString(material['name'])
+        weights_quads = len(self.geometry.get_weights()) // 4
+        self.writeUInt32(weights_quads)
+        for quad_index in range(weights_quads):
+            quad = self.geometry.get_weights()[quad_index * 4:(quad_index + 1) * 4]
+            for weight in quad:
+                self.writeUByte(weight.get_joint_index())
+            for weight in quad:
+                self.writeNUShort(weight.get_strength())
+
+    def _encode_materials(self):
+        self.writeUByte(len(self.geometry.get_materials()))
+        for material in self.geometry.get_materials():
+            self.writeString(material.get_name())
             self.writeString('')
-            self.writeUShort(len(material['polygons']))
+            self.writeUShort(len(material.get_triangles()))
 
             # Calculate settings
-            inputs_count = len(material['polygons'][0][0])
+            inputs_count = len(material.get_triangles()[0][0])
 
             maximal_value = 0
-            for points in material['polygons']:
-                for point in points:
+            for triangle in material.get_triangles():
+                for point in triangle:
                     for vertex in point:
                         if vertex > maximal_value:
                             maximal_value = vertex
 
-            short_length = 1 if maximal_value <= 255 else 2
+            item_length = 1 if maximal_value <= 255 else 2
 
             # Write Settings
             self.writeUByte(inputs_count)
-            self.writeUByte(short_length)
+            self.writeUByte(item_length)
 
             # Write Polygons
-            for points in material['polygons']:
-                for point in points:
+            for triangle in material.get_triangles():
+                for point in triangle:
                     for vertex in point:
-                        self.writeUInteger(vertex, short_length)
+                        self.writeUInteger(vertex, item_length)
