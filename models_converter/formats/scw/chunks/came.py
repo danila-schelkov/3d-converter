@@ -1,29 +1,34 @@
 from . import Chunk
+from ...universal.camera import Camera
 
 
 class CAME(Chunk):
-    def __init__(self, header=None):
+    def __init__(self, header):
         super().__init__(header)
         self.chunk_name = 'CAME'
+
+        self.camera: Camera or None = None
 
     def parse(self, buffer: bytes):
         super().parse(buffer)
 
-        setattr(self, 'name', self.readString())
-        setattr(self, 'v1', self.readFloat())
-        setattr(self, 'xFov', self.readFloat())
-        setattr(self, 'aspectRatio', self.readFloat())
-        setattr(self, 'zNear', self.readFloat())
-        setattr(self, 'zFar', self.readFloat())
+        name = self.readString()
+        self.readFloat()
+        fov = self.readFloat()
+        aspect_ratio = self.readFloat()
+        near = self.readFloat()
+        far = self.readFloat()
+
+        self.camera = Camera(name=name, fov=fov, aspect_ratio=aspect_ratio, near=near, far=far)
 
     def encode(self):
         super().encode()
 
-        self.writeString(getattr(self, 'name'))
-        self.writeFloat(getattr(self, 'v1'))
-        self.writeFloat(getattr(self, 'xFov'))
-        self.writeFloat(getattr(self, 'aspectRatio'))
-        self.writeFloat(getattr(self, 'zNear'))
-        self.writeFloat(getattr(self, 'zFar'))
+        self.writeString(self.camera.get_name())
+        self.writeFloat(self.camera.get_v1())
+        self.writeFloat(self.camera.get_fov())
+        self.writeFloat(self.camera.get_aspect_ration())
+        self.writeFloat(self.camera.get_near())
+        self.writeFloat(self.camera.get_far())
 
         self.length = len(self.buffer)

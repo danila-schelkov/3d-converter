@@ -1,9 +1,12 @@
 import json
 
+from models_converter.formats import universal
 from models_converter.formats.gltf.chunk import GlTFChunk
 from models_converter.formats.gltf.gltf import GlTF
 from models_converter.formats.gltf.node import Node
-from models_converter.utils.reader import Reader
+from models_converter.formats.universal import Scene, Geometry
+from models_converter.utilities.math import Vector3, Quaternion
+from models_converter.utilities.reader import Reader
 
 
 class Parser(Reader):
@@ -14,15 +17,7 @@ class Parser(Reader):
         if self.magic != b'glTF':
             raise TypeError('File Magic isn\'t "glTF"')
 
-        self.parsed = {
-            'header': {
-                'frame_rate': 30
-            },
-            'materials': [],
-            'geometries': [],
-            'cameras': [],
-            'nodes': []
-        }
+        self.scene = Scene()
 
         self.version = None
         self.length = None
@@ -150,44 +145,33 @@ class Parser(Reader):
 
         # </JsonParsing>
 
-    def parse_node(self, node: Node, parent: str = None):
-        node_name = node.name
+    def parse_node(self, gltf_node: Node, parent: str = None):
+        node_name = gltf_node.name
 
-        node_data = {
-            'name': node_name,
-            'parent': parent,
-            'instances': [],
-            'frames': []
-        }
+        node = universal.Node(
+            name=node_name,
+            parent=parent
+        )
 
         instance = None
-        if node.mesh:
-            instance = {
-                'instance_type': 'GEOM',
-                'instance_name': None,
-                'binds': []
-            }
-            geometry_data = {
-                'name': '',
-                'group': '',
-                'vertices': [],
-                'have_bind_matrix': False,
-                'weights': {
-                    'vertex_weights': [],
-                    'weights': [],
-                    'vcount': []
-                },
-                'materials': []
-            }
+        if gltf_node.mesh:
+            mesh = self.gltf.meshes[gltf_node.mesh]  # TODO: merge _geo.glb and _.*.glb files to fix TypeError
+            mesh_name = mesh.name.split('|')
 
-            if node.skin:
-                instance['instance_type'] = 'CONT'
+            group = 'GEO'
+            name = mesh_name[0]
+            if len(mesh_name) > 1:
+                group = mesh_name[0]
+                name = mesh_name[1]
 
-                geometry_data['have_bind_matrix'] = True
-                geometry_data['bind_matrix'] = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
-                geometry_data['joints'] = []
+            geometry = Geometry(name=name, group=group)
 
-                skin_id = node.skin
+            if gltf_node.skin:
+                instance = universal.Node.Instance(name=geometry.get_name(), instance_type='CONT')
+
+                geometry.set_controller_bind_matrix([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1])
+
+                skin_id = gltf_node.skin
                 skin = self.gltf.skins[skin_id]
                 bind_matrices = self.accessors[skin.inverse_bind_matrices]
                 bind_matrices = [[m[0::4], m[1::4], m[2::4], m[3::4]] for m in bind_matrices]
@@ -207,24 +191,9 @@ class Parser(Reader):
                     joint_name = joint_node['name']
                     matrix = bind_matrices[joint_index]
 
-                    joint_data = {
-                        'name': joint_name,
-                        'matrix': matrix
-                    }
-                    geometry_data['joints'].append(joint_data)
-
-            mesh_id = node.mesh
-            mesh = self.gltf.meshes[mesh_id]
-            mesh_name = mesh.name
-            mesh_name = mesh_name.split('|')
-
-            if len(mesh_name) > 1:
-                geometry_data['group'] = mesh_name[0]
-                geometry_data['name'] = mesh_name[1]
+                    geometry.add_joint(Geometry.Joint(joint_name, matrix))
             else:
-                geometry_data['name'] = mesh_name[0]
-
-            instance['instance_name'] = geometry_data['name']
+                instance = universal.Node.Instance(name=geometry.get_name(), instance_type='GEOM')
 
             offsets = {
                 'POSITION': 0,
@@ -239,95 +208,65 @@ class Parser(Reader):
                     material_id = primitive.material
                     polygons_id = primitive.indices
 
-                    inputs = []
-
-                    polygons = self.accessors[polygons_id]
+                    triangles = self.accessors[polygons_id]
                     material = self.gltf.materials[material_id]
 
                     material_name = material.extensions['SC_shader']['name']
-                    instance['binds'].append({
-                        'symbol': material_name,
-                        'target': material_name
-                    })
+                    instance.add_bind(material_name, material_name)
 
                     position = []
                     normal = []
                     texcoord = []
 
-                    vertex_weights = 0
+                    joint_ids = 0
 
                     for attribute_id in attributes:
                         attribute = attributes[attribute_id]
-                        vertex = None
+                        points = None
 
                         if attribute_id == 'POSITION':
                             position = self.accessors[attribute]
-                            vertex = position
+                            points = position
                         elif attribute_id == 'NORMAL':
                             normal = self.accessors[attribute]
-                            vertex = normal
+                            points = normal
                         elif attribute_id.startswith('TEXCOORD'):
                             texcoord = self.accessors[attribute]
 
                             texcoord = [[item[0], 1 - item[1]] for item in texcoord]
                             attribute_id = 'TEXCOORD'
-                            vertex = texcoord
+                            points = texcoord
                         elif attribute_id.startswith('JOINTS'):
-                            vertex_weights = self.accessors[attribute]
+                            joint_ids = self.accessors[attribute]
                         elif attribute_id.startswith('WEIGHTS'):
                             weights = self.accessors[attribute]
 
-                            for x in range(len(vertex_weights)):
-                                geometry_data['weights']['vcount'].append(0)
+                            for x in range(len(joint_ids)):
+                                geometry.add_weight(Geometry.Weight(joint_ids[x][0], weights[x][0] / 255))
+                                geometry.add_weight(Geometry.Weight(joint_ids[x][1], weights[x][1] / 255))
+                                geometry.add_weight(Geometry.Weight(joint_ids[x][2], weights[x][2] / 255))
+                                geometry.add_weight(Geometry.Weight(joint_ids[x][3], weights[x][3] / 255))
 
-                                temp_list = [
-                                    [vertex_weights[x][0], weights[x][0]],
-                                    [vertex_weights[x][1], weights[x][1]],
-                                    [vertex_weights[x][2], weights[x][2]],
-                                    [vertex_weights[x][3], weights[x][3]]
-                                ]
-                                for pair in temp_list:
-                                    if pair[1] != 0:
-                                        geometry_data['weights']['vcount'][x] += 1
-                                        geometry_data['weights']['vertex_weights'].append(pair[0])
-                                        if pair[1] not in geometry_data['weights']['weights']:
-                                            geometry_data['weights']['weights'].append(pair[1])
-                                        geometry_data['weights']['vertex_weights'].append(
-                                            geometry_data['weights']['weights'].index(pair[1])
-                                        )
-                            for weight_index in range(len(geometry_data['weights']['weights'])):
-                                geometry_data['weights']['weights'][weight_index] /= 255
+                        if points:
+                            geometry.add_vertex(Geometry.Vertex(
+                                name=f'{attribute_id.lower()}_{primitive_index}',
+                                vertex_type=attribute_id,
+                                vertex_index=len(geometry.get_vertices()),
+                                vertex_scale=1,
+                                points=points
+                            ))
 
-                        if vertex:
-                            geometry_data['vertices'].append({
-                                'type': attribute_id,
-                                'name': f'{attribute_id.lower()}_{primitive_index}',
-                                'index': len(geometry_data['vertices']),
-                                'scale': 1,
-                                'vertex': vertex
-                            })
-
-                            inputs.append({
-                                'type': attribute_id,
-                                'offset': len(inputs),
-                                'name': f'{attribute_id.lower()}_{primitive_index}',
-                            })
-
-                    polygons = [
+                    triangles = [
                         [
                             [
                                 point[0] + offsets['NORMAL'],
                                 point[0] + offsets['POSITION'],
                                 point[0] + offsets['TEXCOORD']
-                            ] for point in polygons[x:x + 3]
-                        ] for x in range(0, len(polygons), 3)
+                            ] for point in triangles[x:x + 3]
+                        ] for x in range(0, len(triangles), 3)
                     ]
 
-                    geometry_data['materials'].append({
-                        'name': material_name,
-                        'inputs': inputs,
-                        'polygons': polygons
-                    })
+                    geometry.add_material(Geometry.Material(material_name, triangles))
 
                     for attribute_id in attributes:
                         if attribute_id == 'POSITION':
@@ -337,42 +276,37 @@ class Parser(Reader):
                         elif attribute_id.startswith('TEXCOORD'):
                             offsets['TEXCOORD'] += len(texcoord)
 
-            self.parsed['geometries'].append(geometry_data)
+            self.scene.add_geometry(geometry)
 
         if instance is not None:
-            node_data['instances'].append(instance)
+            node.add_instance(instance)
 
-        self.parsed['nodes'].append(node_data)
+        self.scene.add_node(node)
 
-        if node.translation or node.rotation or node.scale:
-            node_data['frames'].append({
-                'frame_id': 0,
-                'rotation': {'x': 0, 'y': 0, 'z': 0, 'w': 0},
-                'position': {'x': 0, 'y': 0, 'z': 0},
-                'scale': {'x': 1, 'y': 1, 'z': 1}
-            })
+        if gltf_node.translation or gltf_node.rotation or gltf_node.scale:
+            node.add_frame(universal.Node.Frame(0, Vector3(), Vector3(1, 1, 1), Quaternion()))
 
-        if node.translation:
-            node_data['frames'][0]['position'] = {
-                'x': node.translation[0],
-                'y': node.translation[1],
-                'z': node.translation[2]
-            }
-        if node.rotation:
-            node_data['frames'][0]['rotation'] = {
-                'x': node.rotation[0],
-                'y': node.rotation[1],
-                'z': node.rotation[2],
-                'w': node.rotation[3]
-            }
-        if node.scale:
-            node_data['frames'][0]['scale'] = {
-                'x': node.scale[0],
-                'y': node.scale[1],
-                'z': node.scale[2]
-            }
+        if gltf_node.translation:
+            node.get_frames()[0].set_position(Vector3(
+                gltf_node.translation[0],
+                gltf_node.translation[1],
+                gltf_node.translation[2]
+            ))
+        if gltf_node.rotation:
+            node.get_frames()[0].set_rotation(Quaternion(
+                gltf_node.rotation[0],
+                gltf_node.rotation[1],
+                gltf_node.rotation[2],
+                gltf_node.rotation[3]
+            ))
+        if gltf_node.scale:
+            node.get_frames()[0].set_scale(Vector3(
+                gltf_node.scale[0],
+                gltf_node.scale[1],
+                gltf_node.scale[2]
+            ))
 
-        if node.children:
-            for child_id in node.children:
+        if gltf_node.children:
+            for child_id in gltf_node.children:
                 child = self.gltf.nodes[child_id]
                 self.parse_node(child, node_name)

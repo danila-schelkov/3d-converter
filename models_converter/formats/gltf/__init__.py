@@ -14,6 +14,7 @@ from .scene import Scene
 from .skin import Skin
 from .texture import Texture
 
+from .writer import Writer
 from .parser import Parser
 
 __all__ = [

@@ -1,50 +1,54 @@
 import binascii
 
 from .chunks import *
+from ..universal import Scene
+from ...interfaces import WriterInterface
 
 
-class Writer:
+class Writer(WriterInterface):
+    MAGIC = b'SC3D'
+
     def __init__(self):
-        self.writen = b'SC3D'
+        self.writen = self.MAGIC
 
-    def write(self, data: dict):
-
-        header = data['header']
+    def write(self, scene: Scene):
         head = HEAD()
-        head.from_dict(header)
+        head.version = 2
+        head.frame_rate = 30
+        head.first_frame = 0
+        head.last_frame = 0
+        head.materials_file = 'sc3d/character_materials.scw' if len(scene.get_geometries()) > 0 else None
 
-        self.write_chunk(head)
+        self._write_chunk(head)
 
         # TODO: materials
-        for material in data['materials']:
-            mate = MATE(header)
-            mate.from_dict(material)
+        for material in scene.get_materials():
+            mate = MATE(head)
 
-            self.write_chunk(mate)
+            self._write_chunk(mate)
 
-        for geometry in data['geometries']:
-            geom = GEOM(header)
-            geom.from_dict(geometry)
+        for geometry in scene.get_geometries():
+            geom = GEOM(head)
+            geom.geometry = geometry
 
-            self.write_chunk(geom)
+            self._write_chunk(geom)
 
-        # TODO: cameras
-        for camera in data['cameras']:
-            came = CAME(header)
-            came.from_dict(camera)
+        for camera in scene.get_cameras():
+            came = CAME(head)
+            came.camera = camera
 
-            self.write_chunk(came)
+            self._write_chunk(came)
 
-        node = NODE(header)
-        node.from_dict({'nodes': data['nodes']})
+        node = NODE(head)
+        node.nodes = scene.get_nodes()
 
-        self.write_chunk(node)
+        self._write_chunk(node)
 
         wend = WEND()
 
-        self.write_chunk(wend)
+        self._write_chunk(wend)
 
-    def write_chunk(self, chunk: Chunk):
+    def _write_chunk(self, chunk: Chunk):
         chunk.encode()
 
         self.writen += chunk.length.to_bytes(4, 'big') + chunk.chunk_name.encode('utf-8') + chunk.buffer

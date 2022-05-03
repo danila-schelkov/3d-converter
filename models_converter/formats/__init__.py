@@ -1,6 +1,6 @@
 __all__ = [
     'scw',
-    'dae',
-    'obj',
+    'collada',
+    'wavefront',
     'gltf'
 ]

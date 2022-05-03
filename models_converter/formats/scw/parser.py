@@ -1,39 +1,26 @@
-from ...utils.reader import Reader
+from ..universal import Scene
+from ...interfaces import ParserInterface
+from ...utilities.reader import Reader
 from .chunks import *
 
 
-class Parser(Reader):
+class Parser(ParserInterface, Reader):
     def __init__(self, file_data: bytes):
-        super().__init__(file_data)
+        Reader.__init__(self, file_data)
+
         self.file_data = file_data
-        self.parsed = {
-            'header': {},
-            'materials': [],
-            'geometries': [],
-            'cameras': [],
-            'nodes': []
-        }
+        self.scene = Scene()
         self.chunks = []
+
+        self.header = None
 
         file_magic = self.read(4)
         if file_magic != b'SC3D':
             raise TypeError('File Magic isn\'t "SC3D"')
 
-    def split_chunks(self):
-        # len(Chunk Length) + len(Chunk Name) + len(Chunk CRC)
-        while len(self.file_data[self.tell():]) >= 12:
-            chunk_length = self.readUInt32()
-            chunk_name = self.readChar(4)
-            chunk_data = self.read(chunk_length)
-            chunk_crc = self.readUInt32()
-
-            self.chunks.append({
-                'chunk_name': chunk_name,
-                'data': chunk_data,
-                'crc': chunk_crc
-            })
-
     def parse(self):
+        self._split_chunks()
+
         for chunk in self.chunks:
             chunk_name = chunk['chunk_name']
             chunk_data = chunk['data']
@@ -42,25 +29,39 @@ class Parser(Reader):
                 head = HEAD()
                 head.parse(chunk_data)
 
-                self.parsed['header'] = head.to_dict()
+                self.header = head
             elif chunk_name == 'MATE':
-                mate = MATE(self.parsed['header'])
+                mate = MATE(self.header)
                 mate.parse(chunk_data)
-                self.parsed['materials'].append(mate.to_dict())
+                self.scene.add_material(mate)
             elif chunk_name == 'GEOM':
-                geom = GEOM(self.parsed['header'])
+                geom = GEOM(self.header)
                 geom.parse(chunk_data)
-                self.parsed['geometries'].append(geom.to_dict())
+                self.scene.add_geometry(geom.geometry)
             elif chunk_name == 'CAME':
-                came = CAME(self.parsed['header'])
+                came = CAME(self.header)
                 came.parse(chunk_data)
-                self.parsed['cameras'].append(came.to_dict())
+                self.scene.add_camera(came.camera)
             elif chunk_name == 'NODE':
-                node = NODE(self.parsed['header'])
+                node = NODE(self.header)
                 node.parse(chunk_data)
-                self.parsed['nodes'] = node.to_dict()['nodes']
+                self.scene.get_nodes().extend(node.nodes)
             elif chunk_name == 'WEND':
                 wend = WEND()
                 wend.parse(chunk_data)
             else:
                 raise TypeError(f'Unknown chunk: {chunk_name}')
+
+    def _split_chunks(self):
+        # len(Chunk Length) + len(Chunk Name) + len(Chunk CRC)
+        while len(self.file_data[self.tell():]) >= 12:
+            chunk_length = self.readUInt32()
+            chunk_name = self.readChars(4)
+            chunk_data = self.read(chunk_length)
+            chunk_crc = self.readUInt32()
+
+            self.chunks.append({
+                'chunk_name': chunk_name,
+                'data': chunk_data,
+                'crc': chunk_crc
+            })
