@@ -21,12 +21,12 @@ class Animation(GlTFProperty):
         def __init__(self):
             super().__init__()
             self.sampler = None
-            self.target = self.Target()
+            self.target = self.Target
 
     def __init__(self):
         super().__init__()
-        self.channels = self.Channel()
-        self.samplers = self.AnimationSampler()
+        self.channels = self.Channel
+        self.samplers = self.AnimationSampler
 
         self.name = None
 

@@ -1,4 +1,6 @@
 from .gltf_property import GlTFProperty
+from ...utilities.math import Vector3, Quaternion
+from ...utilities.matrix.matrix4x4 import Matrix4x4
 
 
 class Node(GlTFProperty):
@@ -7,10 +9,10 @@ class Node(GlTFProperty):
         self.camera = None
         self.children = None
         self.skin = None
-        self.matrix = None  # Default: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+        self.matrix = Matrix4x4(size=(4, 4))
         self.mesh = None
-        self.rotation = None  # Default: [0, 0, 0, 1]
-        self.scale = None  # Default: [1, 1, 1]
-        self.translation = None  # Default: [0, 0, 0]
+        self.rotation = Quaternion()  # Default: [0, 0, 0, 1]
+        self.scale = Vector3(1, 1, 1)  # Default: [1, 1, 1]
+        self.translation = Vector3()  # Default: [0, 0, 0]
         self.weights = None
         self.name = None

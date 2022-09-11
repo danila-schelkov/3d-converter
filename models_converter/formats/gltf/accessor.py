@@ -21,8 +21,8 @@ class Accessor(GlTFProperty):
         def __init__(self):
             super().__init__()
             self.count = None
-            self.indices = self.Indices()
-            self.values = self.Values()
+            self.indices = self.Indices
+            self.values = self.Values
 
     def __init__(self):
         super().__init__()
@@ -35,5 +35,5 @@ class Accessor(GlTFProperty):
         self.normalized = False
         self.max = None
         self.min = None
-        self.sparse = self.Sparse()
+        self.sparse = self.Sparse
         self.name = None

@@ -14,7 +14,7 @@ class Mesh(GlTFProperty):
 
     def __init__(self):
         super().__init__()
-        self.primitives = self.Primitive()
+        self.primitives = self.Primitive
 
         self.weights = None
         self.name = None

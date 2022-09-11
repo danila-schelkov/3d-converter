@@ -4,22 +4,21 @@ from ...utilities.reader import Reader
 from .chunks import *
 
 
-class Parser(ParserInterface, Reader):
+class Parser(ParserInterface):
     def __init__(self, file_data: bytes):
-        Reader.__init__(self, file_data)
-
         self.file_data = file_data
         self.scene = Scene()
         self.chunks = []
 
         self.header = None
 
-        file_magic = self.read(4)
+    def parse(self):
+        reader = Reader(self.file_data)
+        file_magic = reader.read(4)
         if file_magic != b'SC3D':
             raise TypeError('File Magic isn\'t "SC3D"')
 
-    def parse(self):
-        self._split_chunks()
+        self._split_chunks(reader)
 
         for chunk in self.chunks:
             chunk_name = chunk['chunk_name']
@@ -52,13 +51,13 @@ class Parser(ParserInterface, Reader):
             else:
                 raise TypeError(f'Unknown chunk: {chunk_name}')
 
-    def _split_chunks(self):
+    def _split_chunks(self, reader: Reader):
         # len(Chunk Length) + len(Chunk Name) + len(Chunk CRC)
-        while len(self.file_data[self.tell():]) >= 12:
-            chunk_length = self.readUInt32()
-            chunk_name = self.readChars(4)
-            chunk_data = self.read(chunk_length)
-            chunk_crc = self.readUInt32()
+        while reader.tell() <= len(self.file_data) - 12:
+            chunk_length = reader.readUInt32()
+            chunk_name = reader.readChars(4)
+            chunk_data = reader.read(chunk_length)
+            chunk_crc = reader.readUInt32()
 
             self.chunks.append({
                 'chunk_name': chunk_name,

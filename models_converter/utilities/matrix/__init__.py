@@ -53,7 +53,7 @@ class Matrix:
         return str(self.matrix)
 
     @staticmethod
-    def get_identity_matrix(size: tuple):
+    def get_identity_matrix(size: tuple[int, int]):
         matrix = []
 
         for y in range(size[1]):

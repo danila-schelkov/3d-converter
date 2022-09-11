@@ -1,11 +1,16 @@
+import abc
+
 from models_converter.formats.universal import Scene
 
 
 class ParserInterface:
-    def __init__(self):
+    @abc.abstractmethod
+    def __init__(self, file_data: bytes or str):
         self.scene: Scene or None = None
 
-        raise NotImplementedError('This is an abstract class')
-
+    @abc.abstractmethod
     def parse(self):
-        raise NotImplementedError('This is an abstract class')
+        """
+
+        :return:
+        """

@@ -32,5 +32,6 @@ __all__ = [
     'Scene',
     'Skin',
     'Texture',
-    'Parser'
+    'Parser',
+    'Writer'
 ]

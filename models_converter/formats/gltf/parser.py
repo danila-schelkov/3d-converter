@@ -5,17 +5,13 @@ from models_converter.formats.gltf.chunk import GlTFChunk
 from models_converter.formats.gltf.gltf import GlTF
 from models_converter.formats.gltf.node import Node
 from models_converter.formats.universal import Scene, Geometry
-from models_converter.utilities.math import Vector3, Quaternion
+from models_converter.interfaces import ParserInterface
 from models_converter.utilities.reader import Reader
 
 
-class Parser(Reader):
-    def __init__(self, initial_bytes: bytes):
-        super().__init__(initial_bytes, 'little')
-
-        self.magic = self.read(4)
-        if self.magic != b'glTF':
-            raise TypeError('File Magic isn\'t "glTF"')
+class Parser(ParserInterface):
+    def __init__(self, data: bytes):
+        self.file_data = data
 
         self.scene = Scene()
 
@@ -32,36 +28,45 @@ class Parser(Reader):
         self.gltf = GlTF()
 
     def parse_bin(self):
-        super().__init__(self.bin_chunk.data, 'little')
+        reader = Reader(self.bin_chunk.data, 'little')
 
         for buffer in self.gltf.buffers:
-            parsed_buffer = self.read(buffer.byte_length)
+            parsed_buffer = reader.read(buffer.byte_length)
             self.buffers.append(parsed_buffer)
 
         for buffer_view in self.gltf.buffer_views:
-            super().__init__(self.buffers[buffer_view.buffer], 'little')
+            reader.__init__(self.buffers[buffer_view.buffer], 'little')
 
-            self.read(buffer_view.byte_offset)
+            reader.read(buffer_view.byte_offset)
 
             length = buffer_view.byte_length
-            data = self.read(length)
+            data = reader.read(length)
 
             self.buffer_views.append(data)
 
         for accessor in self.gltf.accessors:
-            super().__init__(self.buffer_views[accessor.buffer_view], 'little')
-            temp_accessor = []
+            reader.__init__(self.buffer_views[accessor.buffer_view], 'little')
 
-            self.read(accessor.byte_offset)
+            reader.read(accessor.byte_offset)
 
             types = {
-                5120: (self.readByte, 1),
-                5121: (self.readUByte, 1),
-                5122: (self.readShort, 2),
-                5123: (self.readUShort, 2),
-                5125: (self.readUInt32, 4),
-                5126: (self.readFloat, 4)
+                5120: (reader.readByte, 1),
+                5121: (reader.readUByte, 1),
+                5122: (reader.readShort, 2),
+                5123: (reader.readUShort, 2),
+                5125: (reader.readUInt32, 4),
+                5126: (reader.readFloat, 4)
             }
+
+            if accessor.normalized:
+                types = {
+                    5120: (lambda: max(reader.readByte() / 127, -1.0), 1),
+                    5121: (lambda: reader.readUByte() / 255, 1),
+                    5122: (lambda: max(reader.readShort() / 32767, -1.0), 2),
+                    5123: (lambda: reader.readUShort() / 65535, 2),
+                    5125: (reader.readUInt32, 4),
+                    5126: (reader.readFloat, 4)
+                }
 
             items_count = {
                 'SCALAR': 1,
@@ -73,68 +78,48 @@ class Parser(Reader):
                 'MAT4': 16
             }
 
-            component_nb = items_count[accessor.type]
-            read_type, bytes_per_elem = types[accessor.component_type]
-            default_stride = bytes_per_elem * component_nb
+            components_count = items_count[accessor.type]
+            read_type, bytes_per_element = types[accessor.component_type]
+            default_stride = bytes_per_element * components_count
 
             stride = self.gltf.buffer_views[accessor.buffer_view].byte_stride or default_stride
-            if default_stride == stride:
-                for x in range(accessor.count):
-                    temp_list = []
-                    for i in range(component_nb):
-                        temp_list.append(read_type())
-                    temp_accessor.append(temp_list)
-            else:
-                elems_per_stride = stride // bytes_per_elem
-                num_elems = (accessor.count - 1) * elems_per_stride + component_nb
 
-                temp_list = []
-                for i in range(num_elems):
-                    temp_list.append(read_type())
+            elements_per_stride = stride // bytes_per_element
+            elements_count = accessor.count * elements_per_stride
 
-                temp_accessor = [temp_list[x:x + component_nb] for x in range(0, num_elems, elems_per_stride)]
+            temp_list = []
+            for i in range(elements_count):
+                temp_list.append(read_type())
 
-            if accessor.normalized:
-                for item_index, data in enumerate(temp_accessor):
-                    new_data = []
-                    for value in data:
-                        if accessor.component_type == 5120:
-                            value = max(value / 127, -1.0)
-                        elif accessor.component_type == 5121:
-                            value /= 255
-                        elif accessor.component_type == 5122:
-                            value = max(value / 32767, -1.0)
-                        elif accessor.component_type == 5123:
-                            value /= 65535
-                        new_data.append(value)
-                    temp_accessor[item_index] = new_data
-
-            self.accessors.append(temp_accessor)
+            self.accessors.append([
+                temp_list[i:i + components_count]
+                for i in range(0, elements_count, elements_per_stride)
+            ])
 
     def parse(self):
-        # <FileParsing>
+        reader = Reader(self.file_data, 'little')
 
-        self.version = self.readUInt32()
-        self.length = self.readUInt32()
+        magic = reader.read(4)
+        if magic != b'glTF':
+            raise TypeError('Wrong file magic! "676c5446" expected, but given is ' + magic.hex())
+
+        self.version = reader.readUInt32()
+        self.length = reader.readUInt32()
 
         self.json_chunk = GlTFChunk()
         self.bin_chunk = GlTFChunk()
 
-        self.json_chunk.chunk_length = self.readUInt32()
-        self.json_chunk.chunk_name = self.read(4)
-        self.json_chunk.data = self.read(self.json_chunk.chunk_length)
+        self.json_chunk.chunk_length = reader.readUInt32()
+        self.json_chunk.chunk_name = reader.read(4)
+        self.json_chunk.data = reader.read(self.json_chunk.chunk_length)
 
-        self.bin_chunk.chunk_length = self.readUInt32()
-        self.bin_chunk.chunk_name = self.read(4)
-        self.bin_chunk.data = self.read(self.bin_chunk.chunk_length)
-
-        # </FileParsing>
+        self.bin_chunk.chunk_length = reader.readUInt32()
+        self.bin_chunk.chunk_name = reader.read(4)
+        self.bin_chunk.data = reader.read(self.bin_chunk.chunk_length)
 
         self.gltf.from_dict(json.loads(self.json_chunk.data))
 
         self.parse_bin()
-
-        # <JsonParsing>
 
         scene_id = self.gltf.scene
         scene = self.gltf.scenes[scene_id]
@@ -143,10 +128,14 @@ class Parser(Reader):
             node = self.gltf.nodes[node_id]
             self.parse_node(node)
 
-        # </JsonParsing>
+        # TODO: animations
+        # for animation in self.gltf.animations:
+        #     for channel in animation.channels:
+        #         sampler: Animation.AnimationSampler = animation.samplers[channel.sampler]
+        #         input_accessor = self.accessors[sampler.input]
 
     def parse_node(self, gltf_node: Node, parent: str = None):
-        node_name = gltf_node.name
+        node_name = gltf_node.name.split('|')[-1]
 
         node = universal.Node(
             name=node_name,
@@ -154,8 +143,8 @@ class Parser(Reader):
         )
 
         instance = None
-        if gltf_node.mesh:
-            mesh = self.gltf.meshes[gltf_node.mesh]  # TODO: merge _geo.glb and _.*.glb files to fix TypeError
+        if gltf_node.mesh is not None and type(self.gltf.meshes) is list:
+            mesh = self.gltf.meshes[gltf_node.mesh]
             mesh_name = mesh.name.split('|')
 
             group = 'GEO'
@@ -166,7 +155,7 @@ class Parser(Reader):
 
             geometry = Geometry(name=name, group=group)
 
-            if gltf_node.skin:
+            if gltf_node.skin is not None:
                 instance = universal.Node.Instance(name=geometry.get_name(), instance_type='CONT')
 
                 geometry.set_controller_bind_matrix([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1])
@@ -195,11 +184,9 @@ class Parser(Reader):
             else:
                 instance = universal.Node.Instance(name=geometry.get_name(), instance_type='GEOM')
 
-            offsets = {
-                'POSITION': 0,
-                'NORMAL': 0,
-                'TEXCOORD': 0
-            }
+            position_offset = 0
+            normal_offset = 0
+            texcoord_offset = 0
 
             for primitive in mesh.primitives:
                 if primitive.to_dict() != {}:
@@ -226,10 +213,24 @@ class Parser(Reader):
 
                         if attribute_id == 'POSITION':
                             position = self.accessors[attribute]
-                            points = position
+                            points = list(map(
+                                lambda point: (
+                                    point[0] * gltf_node.scale.x + gltf_node.translation.x,
+                                    point[1] * gltf_node.scale.y + gltf_node.translation.y,
+                                    point[2] * gltf_node.scale.z + gltf_node.translation.z
+                                ),
+                                position
+                            ))
                         elif attribute_id == 'NORMAL':
                             normal = self.accessors[attribute]
-                            points = normal
+                            points = list(map(
+                                lambda point: (
+                                    point[0] * gltf_node.scale.x,
+                                    point[1] * gltf_node.scale.y,
+                                    point[2] * gltf_node.scale.z
+                                ),
+                                normal
+                            ))
                         elif attribute_id.startswith('TEXCOORD'):
                             texcoord = self.accessors[attribute]
 
@@ -259,9 +260,9 @@ class Parser(Reader):
                     triangles = [
                         [
                             [
-                                point[0] + offsets['NORMAL'],
-                                point[0] + offsets['POSITION'],
-                                point[0] + offsets['TEXCOORD']
+                                point[0] + normal_offset,
+                                point[0] + position_offset,
+                                point[0] + texcoord_offset
                             ] for point in triangles[x:x + 3]
                         ] for x in range(0, len(triangles), 3)
                     ]
@@ -270,11 +271,11 @@ class Parser(Reader):
 
                     for attribute_id in attributes:
                         if attribute_id == 'POSITION':
-                            offsets['POSITION'] += len(position)
+                            position_offset += len(position)
                         elif attribute_id == 'NORMAL':
-                            offsets['NORMAL'] += len(normal)
+                            normal_offset += len(normal)
                         elif attribute_id.startswith('TEXCOORD'):
-                            offsets['TEXCOORD'] += len(texcoord)
+                            texcoord_offset += len(texcoord)
 
             self.scene.add_geometry(geometry)
 
@@ -283,28 +284,12 @@ class Parser(Reader):
 
         self.scene.add_node(node)
 
-        if gltf_node.translation or gltf_node.rotation or gltf_node.scale:
-            node.add_frame(universal.Node.Frame(0, Vector3(), Vector3(1, 1, 1), Quaternion()))
-
-        if gltf_node.translation:
-            node.get_frames()[0].set_position(Vector3(
-                gltf_node.translation[0],
-                gltf_node.translation[1],
-                gltf_node.translation[2]
-            ))
-        if gltf_node.rotation:
-            node.get_frames()[0].set_rotation(Quaternion(
-                gltf_node.rotation[0],
-                gltf_node.rotation[1],
-                gltf_node.rotation[2],
-                gltf_node.rotation[3]
-            ))
-        if gltf_node.scale:
-            node.get_frames()[0].set_scale(Vector3(
-                gltf_node.scale[0],
-                gltf_node.scale[1],
-                gltf_node.scale[2]
-            ))
+        node.add_frame(universal.Node.Frame(
+            0,
+            gltf_node.translation,
+            gltf_node.scale,
+            gltf_node.rotation
+        ))
 
         if gltf_node.children:
             for child_id in gltf_node.children:

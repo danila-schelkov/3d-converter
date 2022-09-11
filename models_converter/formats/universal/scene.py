@@ -38,6 +38,13 @@ class Scene:
     def add_node(self, node: Node):
         self._nodes.append(node)
 
+    def import_nodes(self, animation_scene):
+        for node in self._nodes:
+            for animation_node in animation_scene.get_nodes():
+                if node.get_name() == animation_node.get_name():
+                    node.set_frames(animation_node.get_frames())
+                    break
+
     def get_frame_rate(self) -> int:
         return self._frame_rate
 

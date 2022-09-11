@@ -1,5 +1,8 @@
+import typing
+
+
 class Reader:
-    def __init__(self, buffer: bytes, endian: str = 'big'):
+    def __init__(self, buffer: bytes, endian: typing.Literal['big', 'little'] = 'big'):
         self.buffer = buffer
         self.endian = endian
         self.i = 0

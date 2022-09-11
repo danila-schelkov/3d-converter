@@ -104,3 +104,9 @@ class Node:
 
     def add_frame(self, frame: Frame):
         self._frames.append(frame)
+
+    def set_frames(self, frames: List[Frame]):
+        self._frames.clear()
+
+        for frame in frames:
+            self._frames.append(frame)

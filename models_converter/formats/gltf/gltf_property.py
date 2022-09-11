@@ -1,3 +1,7 @@
+from models_converter.utilities.math import Vector3, Quaternion
+from models_converter.utilities.matrix.matrix4x4 import Matrix4x4
+
+
 def to_camelcase(property_name: str):
     words = property_name.split('_')
     for word_index in range(len(words)):
@@ -9,19 +13,16 @@ def to_camelcase(property_name: str):
     return camelcase_name
 
 
-def to_lowercase(property_name: str):
-    letters = list(property_name)
+def to_lowercase(property_name: str) -> str:
+    result = ''
 
-    for letter_index in range(len(letters)):
-        letter = letters[letter_index]
+    for char in property_name:
+        if char.isupper():
+            char = f'_{char.lower()}'
 
-        if letter.isupper():
-            letter = f'_{letter.lower()}'
+        result += char
 
-        letters[letter_index] = letter
-
-    lowercase_name = ''.join(letters)
-    return lowercase_name
+    return result
 
 
 class GlTFProperty:
@@ -36,13 +37,14 @@ class GlTFProperty:
                 value_type = type(value)
 
                 attribute_value = getattr(self, attribute_name)
-                attribute_value_type = type(attribute_value)
 
-                if attribute_value is None or value_type in [int, str]:
+                if attribute_value is None or value_type in (int, str, bool):
                     attribute_value = value
-                elif issubclass(attribute_value_type, GlTFProperty):
+                elif type(attribute_value) in (Vector3, Quaternion, Matrix4x4) and type(value) is list:
+                    attribute_value = type(attribute_value)(*value)
+                elif issubclass(attribute_value, GlTFProperty):
                     if value_type is list:
-                        value_type = attribute_value_type
+                        value_type = attribute_value
                         values = []
 
                         for item in value:
@@ -53,7 +55,7 @@ class GlTFProperty:
 
                         attribute_value = values
                     else:
-                        attribute_value = attribute_value_type()
+                        attribute_value = attribute_value()
                         attribute_value.from_dict(value)
 
                 setattr(self, attribute_name, attribute_value)
