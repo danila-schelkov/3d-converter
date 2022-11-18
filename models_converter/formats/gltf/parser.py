@@ -142,6 +142,11 @@ class Parser(ParserInterface):
             parent=parent
         )
 
+        # Transform
+        translation = gltf_node.translation
+        scale = gltf_node.scale
+        rotation = gltf_node.rotation
+
         instance = None
         if gltf_node.mesh is not None and type(self.gltf.meshes) is list:
             mesh = self.gltf.meshes[gltf_node.mesh]
@@ -158,21 +163,17 @@ class Parser(ParserInterface):
             if gltf_node.skin is not None:
                 instance = universal.Node.Instance(name=geometry.get_name(), instance_type='CONT')
 
-                geometry.set_controller_bind_matrix([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1])
+                geometry.set_controller_bind_matrix([
+                    1, 0, 0, translation.x,
+                    0, 1, 0, translation.y,
+                    0, 0, 1, translation.z,
+                    0, 0, 0, 1
+                ])
 
                 skin_id = gltf_node.skin
                 skin = self.gltf.skins[skin_id]
                 bind_matrices = self.accessors[skin.inverse_bind_matrices]
-                bind_matrices = [[m[0::4], m[1::4], m[2::4], m[3::4]] for m in bind_matrices]
-                for matrix_index in range(len(bind_matrices)):
-                    m = bind_matrices[matrix_index]
-
-                    matrix = m[0]
-                    matrix.extend(m[1])
-                    matrix.extend(m[2])
-                    matrix.extend(m[3])
-
-                    bind_matrices[matrix_index] = matrix
+                bind_matrices = [[*m[0::4], *m[1::4], *m[2::4], *m[3::4]] for m in bind_matrices]
 
                 for joint in skin.joints:
                     joint_index = skin['joints'].index(joint)
@@ -196,9 +197,12 @@ class Parser(ParserInterface):
                     polygons_id = primitive.indices
 
                     triangles = self.accessors[polygons_id]
-                    material = self.gltf.materials[material_id]
 
-                    material_name = material.extensions['SC_shader']['name']
+                    material_name = f'{name}_material'
+                    if primitive.material is not None:
+                        material = self.gltf.materials[material_id]
+                        if 'SC_shader' in material.extensions:
+                            material_name = material.extensions['SC_shader']['name']
                     instance.add_bind(material_name, material_name)
 
                     position = []
@@ -215,9 +219,9 @@ class Parser(ParserInterface):
                             position = self.accessors[attribute]
                             points = list(map(
                                 lambda point: (
-                                    point[0] * gltf_node.scale.x + gltf_node.translation.x,
-                                    point[1] * gltf_node.scale.y + gltf_node.translation.y,
-                                    point[2] * gltf_node.scale.z + gltf_node.translation.z
+                                    point[0] * scale.x,
+                                    point[1] * scale.y,
+                                    point[2] * scale.z
                                 ),
                                 position
                             ))
@@ -234,19 +238,19 @@ class Parser(ParserInterface):
                         elif attribute_id.startswith('TEXCOORD'):
                             texcoord = self.accessors[attribute]
 
-                            texcoord = [[item[0], 1 - item[1]] for item in texcoord]
                             attribute_id = 'TEXCOORD'
-                            points = texcoord
+                            # TODO: look how to resize it this
+                            points = [[item[0], 1 - item[1]] for item in texcoord]
                         elif attribute_id.startswith('JOINTS'):
                             joint_ids = self.accessors[attribute]
                         elif attribute_id.startswith('WEIGHTS'):
                             weights = self.accessors[attribute]
 
                             for x in range(len(joint_ids)):
-                                geometry.add_weight(Geometry.Weight(joint_ids[x][0], weights[x][0] / 255))
-                                geometry.add_weight(Geometry.Weight(joint_ids[x][1], weights[x][1] / 255))
-                                geometry.add_weight(Geometry.Weight(joint_ids[x][2], weights[x][2] / 255))
-                                geometry.add_weight(Geometry.Weight(joint_ids[x][3], weights[x][3] / 255))
+                                geometry.add_weight(Geometry.Weight(joint_ids[x][0], weights[x][0]))
+                                geometry.add_weight(Geometry.Weight(joint_ids[x][1], weights[x][1]))
+                                geometry.add_weight(Geometry.Weight(joint_ids[x][2], weights[x][2]))
+                                geometry.add_weight(Geometry.Weight(joint_ids[x][3], weights[x][3]))
 
                         if points:
                             geometry.add_vertex(Geometry.Vertex(
@@ -282,14 +286,14 @@ class Parser(ParserInterface):
         if instance is not None:
             node.add_instance(instance)
 
-        self.scene.add_node(node)
-
         node.add_frame(universal.Node.Frame(
             0,
-            gltf_node.translation,
-            gltf_node.scale,
-            gltf_node.rotation
+            translation,
+            scale,
+            rotation
         ))
+
+        self.scene.add_node(node)
 
         if gltf_node.children:
             for child_id in gltf_node.children:
