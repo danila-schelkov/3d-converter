@@ -27,7 +27,7 @@ def to_lowercase(property_name: str) -> str:
 
 class GlTFProperty:
     def __init__(self):
-        self.extensions = None
+        self.extensions = []
         self.extras = None
 
     def from_dict(self, dictionary: dict):
