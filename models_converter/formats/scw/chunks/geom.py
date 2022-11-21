@@ -7,7 +7,7 @@ class GEOM(Chunk):
         super().__init__(header)
         self.chunk_name = 'GEOM'
 
-        self.geometry: Geometry or None = None
+        self.geometry: Geometry = None
 
     def parse(self, buffer: bytes):
         super().parse(buffer)
@@ -109,7 +109,7 @@ class GEOM(Chunk):
                     ] for _ in range(3)  # 3 points
                 ])
 
-            self.geometry.add_material(Geometry.Material(material_name, triangles, self.geometry.get_vertices()))
+            self.geometry.add_primitive(Geometry.Primitive(material_name, triangles, self.geometry.get_vertices()))
 
     def encode(self):
         super().encode()
@@ -176,17 +176,17 @@ class GEOM(Chunk):
                 self.writeNUShort(weight.get_strength())
 
     def _encode_materials(self):
-        self.writeUByte(len(self.geometry.get_materials()))
-        for material in self.geometry.get_materials():
-            self.writeString(material.get_name())
+        self.writeUByte(len(self.geometry.get_primitives()))
+        for primitive in self.geometry.get_primitives():
+            self.writeString(primitive.get_material_name())
             self.writeString('')
-            self.writeUShort(len(material.get_triangles()))
+            self.writeUShort(len(primitive.get_triangles()))
 
             # Calculate settings
-            inputs_count = len(material.get_triangles()[0][0])
+            inputs_count = len(primitive.get_input_vertices())
 
             maximal_value = 0
-            for triangle in material.get_triangles():
+            for triangle in primitive.get_triangles():
                 for point in triangle:
                     for vertex in point:
                         if vertex > maximal_value:
@@ -199,7 +199,7 @@ class GEOM(Chunk):
             self.writeUByte(item_length)
 
             # Write Polygons
-            for triangle in material.get_triangles():
+            for triangle in primitive.get_triangles():
                 for point in triangle:
                     for vertex in point:
                         self.writeUInteger(vertex, item_length)

@@ -19,7 +19,7 @@ class Parser(ParserInterface):
     def parse(self):
         triangles = []
         geometry_name = None
-        material = 'character_mat'
+        material_name = 'character_mat'
         position_scale, normals_scale, texcoord_scale = 1, 1, 1
 
         vertices_offsets = {
@@ -64,7 +64,7 @@ class Parser(ParserInterface):
             elif line.startswith('o '):
                 geometry_name = items[0]
                 if '|' in items[0]:
-                    geometry_name, material = items[0].split('|')
+                    geometry_name, material_name = items[0].split('|')
 
                 if self.position_temp:
                     self.position = []
@@ -119,18 +119,18 @@ class Parser(ParserInterface):
                         points=self.texcoord
                     ))
                     self.scene.add_geometry(geometry)
-                self.scene.get_geometries()[-1].add_material(
-                    Geometry.Material(material, triangles, self.scene.get_geometries()[-1].get_vertices())
+                self.scene.get_geometries()[-1].add_primitive(
+                    Geometry.Primitive(material_name, triangles, self.scene.get_geometries()[-1].get_vertices())
                 )
 
-                material = 'character_mat'
+                material_name = 'character_mat'
                 triangles = []
 
         for geometry in self.scene.get_geometries():
             node = Node(name=geometry.get_name(), parent='')
             instance = Node.Instance(name=geometry.get_name(), instance_type='GEOM')
-            for material in geometry.get_materials():
-                instance.add_bind(material.get_name(), material.get_name())
+            for primitive in geometry.get_primitives():
+                instance.add_bind(primitive.get_material_name(), primitive.get_material_name())
             node.add_instance(instance)
 
             node.add_frame(Node.Frame(0, Vector3(), Vector3(1, 1, 1), Quaternion()))

@@ -141,12 +141,12 @@ class Writer(WriterInterface):
             if vertex_type == 'POSITION':
                 vertices = SubElement(mesh, 'vertices', id=f'{source_name}-vertices')
                 self.dae.write_input(vertices, 'POSITION', source_name)
-        for material in geometry.get_materials():
+        for primitive in geometry.get_primitives():
             collada_triangles = SubElement(mesh, 'triangles',
-                                           count=f'{len(material.get_triangles())}',
-                                           material=material.get_name())
+                                           count=f'{len(primitive.get_triangles())}',
+                                           material=primitive.get_material_name())
 
-            for vertex in material.get_input_vertices():
+            for vertex in primitive.get_input_vertices():
                 input_type = vertex.get_type()
                 if input_type == 'POSITION':
                     input_type = 'VERTEX'
@@ -159,7 +159,7 @@ class Writer(WriterInterface):
             polygons = SubElement(collada_triangles, 'p')
 
             formatted_polygons_data = []
-            for triangle in material.get_triangles():
+            for triangle in primitive.get_triangles():
                 for point in triangle:
                     for coordinate in point:
                         formatted_polygons_data.append(str(coordinate))

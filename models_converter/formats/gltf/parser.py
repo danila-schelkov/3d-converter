@@ -295,7 +295,7 @@ class Parser(ParserInterface):
                         ] for x in range(0, len(triangles), 3)
                     ]
 
-                    geometry.add_material(Geometry.Material(material_name, triangles, input_vertices))
+                    geometry.add_primitive(Geometry.Primitive(material_name, triangles, input_vertices))
 
                     for attribute_id in attributes:
                         if attribute_id == 'POSITION':

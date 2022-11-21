@@ -29,6 +29,9 @@ class Node:
         def get_name(self) -> str:
             return self._name
 
+        def set_name(self, name: str):
+            self._name = name
+
         def get_type(self) -> str:
             return self._type
 

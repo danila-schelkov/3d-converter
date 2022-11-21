@@ -174,22 +174,24 @@ class Parser(ParserInterface):
                     collada_geometry = self.library_geometries.find(f'collada:geometry[@id="{instance.get_name()}"]',
                                                                     NAMESPACES)
 
+                instance_name = collada_geometry.attrib['name']
                 if not ('name' in collada_geometry.attrib):
-                    collada_geometry.attrib['name'] = collada_geometry.attrib['id']
-
-                instance._name = collada_geometry.attrib['name']
+                    instance_name = collada_geometry.attrib['id']
 
                 for suffix in ('-skin', '-cont'):
-                    instance._name = remove_suffix(instance.get_name(), suffix)
+                    instance_name = remove_suffix(instance_name, suffix)
                 for suffix in ('-mesh', '-geom'):
-                    instance._name = remove_suffix(instance.get_name(), suffix)
+                    instance_name = remove_suffix(instance_name, suffix)
+
+                instance.set_name(instance_name)
 
                 if collada_geometry is not None:
                     geometry = self.parse_geometry(collada_geometry)
                     if controller is not None:
                         self.parse_controller(controller, geometry)
 
-    def parse_controller(self, collada_controller, geometry: Geometry):
+    @staticmethod
+    def parse_controller(collada_controller, geometry: Geometry):
         skin = collada_controller[0]
 
         bind_shape_matrix = skin.find('collada:bind_shape_matrix', NAMESPACES).text
@@ -333,8 +335,8 @@ class Parser(ParserInterface):
                     for point_index in range(0, len(inputs) * 3, 3)
                 ] for polygon_index in range(0, len(triangles_temp), len(inputs) * 3)
             ]
-            geometry.add_material(Geometry.Material(
-                name=triangles_material,
+            geometry.add_primitive(Geometry.Primitive(
+                material_name=triangles_material,
                 triangles=triangles,
                 input_vertices=vertices_inputs
             ))

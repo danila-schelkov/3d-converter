@@ -33,14 +33,14 @@ class Geometry:
         def get_points(self) -> List[List[float]]:
             return self._points
 
-    class Material:
-        def __init__(self, name: str, triangles: List[List[List[int]]], input_vertices: List):
-            self._name: str = name
+    class Primitive:
+        def __init__(self, material_name: str, triangles: List[List[List[int]]], input_vertices: List):
+            self._material_name: str = material_name
             self._triangles: List[List[List[int]]] = triangles
             self._input_vertices: List[Geometry.Vertex] = input_vertices
 
-        def get_name(self) -> str:
-            return self._name
+        def get_material_name(self) -> str:
+            return self._material_name
 
         def get_triangles(self) -> List[List[List[int]]]:
             return self._triangles
@@ -78,7 +78,7 @@ class Geometry:
         self._name: str = name
         self._group: str or None = group
         self._vertices: List[Geometry.Vertex] = []
-        self._materials: List[Geometry.Material] = []
+        self._primitives: List[Geometry.Primitive] = []
         self._bind_matrix: List[float] or None = None
         self._joints: List[Geometry.Joint] = []
         self._weights: List[Geometry.Weight] = []
@@ -95,11 +95,11 @@ class Geometry:
     def add_vertex(self, vertex: Vertex):
         self._vertices.append(vertex)
 
-    def get_materials(self) -> List[Material]:
-        return self._materials
+    def get_primitives(self) -> List[Primitive]:
+        return self._primitives
 
-    def add_material(self, material: Material):
-        self._materials.append(material)
+    def add_primitive(self, primitive: Primitive):
+        self._primitives.append(primitive)
 
     def has_controller(self) -> bool:
         return self._bind_matrix is not None
