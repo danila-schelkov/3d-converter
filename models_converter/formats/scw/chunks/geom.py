@@ -1,3 +1,5 @@
+from typing import List
+
 from . import Chunk
 from ...universal import Geometry
 
@@ -36,7 +38,7 @@ class GEOM(Chunk):
             vertex_index = self.readUByte()
             self.readUByte()  # sub_index
             vertex_stride = self.readUByte()
-            vertex_scale = self.readFloat() / 32512
+            vertex_scale = self.readFloat()
             vertex_count = self.readUInt32()
 
             if vertex_type == 'VERTEX':
@@ -44,7 +46,7 @@ class GEOM(Chunk):
 
             coordinates = []
             for _ in range(vertex_count):
-                coordinates_massive = [self.readShort() for _ in range(vertex_stride)]
+                coordinates_massive = [self.readNShort() for _ in range(vertex_stride)]
 
                 if vertex_type == 'TEXCOORD':
                     coordinates_massive[1::2] = [1 - v for v in coordinates_massive[1::2]]
@@ -117,7 +119,19 @@ class GEOM(Chunk):
         self.writeString(self.geometry.get_name())
         self.writeString(self.geometry.get_group())
 
-        self._encode_vertices(self.geometry.get_vertices())
+        # Join vertices with same type
+        added_vertices_types: List[str] = []
+        joined_vertices: List[Geometry.Vertex] = []
+
+        for vertex in self.geometry.get_vertices():
+            if vertex.get_type() in added_vertices_types:
+                joined_vertices[added_vertices_types.index(vertex.get_type())].get_points().extend(vertex.get_points())
+                continue
+
+            added_vertices_types.append(vertex.get_type())
+            joined_vertices.append(vertex)
+
+        self._encode_vertices(joined_vertices)
 
         self._encode_skin()
 
@@ -125,14 +139,14 @@ class GEOM(Chunk):
 
         self.length = len(self.buffer)
 
-    def _encode_vertices(self, vertices):
+    def _encode_vertices(self, vertices: List[Geometry.Vertex]):
         self.writeUByte(len(vertices))
         for vertex in vertices:
             self.writeString(vertex.get_type())
             self.writeUByte(vertex.get_index())
             self.writeUByte(0)  # sub_index
             self.writeUByte(vertex.get_point_size())
-            self.writeFloat(vertex.get_scale() * 32512)
+            self.writeFloat(vertex.get_scale())
             self.writeUInt32(len(vertex.get_points()))
             for point in vertex.get_points():
                 if vertex.get_type() == 'TEXCOORD':

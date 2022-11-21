@@ -24,7 +24,7 @@ class Geometry:
         def get_index(self) -> int:
             return self._index
 
-        def get_point_size(self) -> float:
+        def get_point_size(self) -> int:
             return len(self._points[0])
 
         def get_scale(self) -> float:

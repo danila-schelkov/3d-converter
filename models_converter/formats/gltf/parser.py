@@ -239,24 +239,10 @@ class Parser(ParserInterface):
 
                         if attribute_id == 'POSITION':
                             position = self._accessors[attribute]
-                            points = list(map(
-                                lambda point: (
-                                    point[0],
-                                    point[1],
-                                    point[2]
-                                ),
-                                position
-                            ))
+                            points = position
                         elif attribute_id == 'NORMAL':
                             normal = self._accessors[attribute]
-                            points = list(map(
-                                lambda point: (
-                                    point[0],
-                                    point[1],
-                                    point[2]
-                                ),
-                                normal
-                            ))
+                            points = normal
                         elif attribute_id.startswith('TEXCOORD'):
                             texcoord = self._accessors[attribute]
 
