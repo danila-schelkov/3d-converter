@@ -2,6 +2,7 @@ from xml.etree.ElementTree import *
 
 from .collada import Collada
 from ..universal import Scene, Node, Geometry
+from ..universal.material import Material
 from ...interfaces import WriterInterface
 from ...utilities.matrix.matrix4x4 import Matrix4x4
 
@@ -47,8 +48,8 @@ class Writer(WriterInterface):
 
         self.create_libraries()
 
-        # for material in scene.get_materials():
-        #     self.create_material(material)
+        for material in scene.get_materials():
+            self.create_material(material)
 
         for geometry in scene.get_geometries():
             geometry_name = self.create_geometry(geometry)
@@ -60,48 +61,51 @@ class Writer(WriterInterface):
 
         self.writen = tostring(self.dae.root, xml_declaration=True).decode()
 
-    def create_material(self, material_data):
-        material_name = material_data['name']
-        SubElement(self.library_materials, 'material', id=material_name)
+    def create_material(self, material: Material):
+        material_name = material.get_name()
         effect_name = f'{material_name}-effect'
-        material = SubElement(self.library_materials, 'material', id=material_name)
-        SubElement(material, 'instance_effect', url=f'#{effect_name}')
+
+        collada_material = SubElement(self.library_materials, 'material', id=material_name)
+        SubElement(collada_material, 'instance_effect', url=f'#{effect_name}')
+
         effect = SubElement(self.library_effects, 'effect', id=effect_name)
+
         profile = SubElement(effect, 'profile_COMMON')
         technique = SubElement(profile, 'technique', sid='common')
-        ambient_data = material_data['effect']['ambient']
-        diffuse_data = material_data['effect']['diffuse']
-        emission_data = material_data['effect']['emission']
-        specular_data = material_data['effect']['specular']
         phong = SubElement(technique, 'phong')
-        if type(ambient_data) is list:
-            ambient = SubElement(phong, 'ambient')
-            ambient_data[3] /= 255
-            ambient_data = [str(item) for item in ambient_data]
-            SubElement(ambient, 'color').text = ' '.join(ambient_data)
-        # else:
-        #     SubElement(ambient, 'texture', texture=ambient_data, texcoord='CHANNEL0')
-        if type(diffuse_data) is list:
-            diffuse = SubElement(phong, 'diffuse')
-            diffuse_data[3] /= 255
-            diffuse_data = [str(item) for item in diffuse_data]
-            SubElement(diffuse, 'color').text = ' '.join(diffuse_data)
-        # else:
-        #     SubElement(diffuse, 'texture', texture=diffuse_data, texcoord='CHANNEL0')
-        if type(emission_data) is list:
-            emission = SubElement(phong, 'emission')
-            emission_data[3] /= 255
-            emission_data = [str(item) for item in emission_data]
-            SubElement(emission, 'color').text = ' '.join(emission_data)
-        # else:
-        #     SubElement(emission, 'texture', texture=emission_data, texcoord='CHANNEL0')
-        if type(specular_data) is list:
-            specular = SubElement(phong, 'specular')
-            specular_data[3] /= 255
-            specular_data = [str(item) for item in specular_data]
-            SubElement(specular, 'color').text = ' '.join(specular_data)
-        # else:
-        #     SubElement(specular, 'texture', texture=specular_data, texcoord='CHANNEL0')
+
+        # ambient_data = material['effect']['ambient']
+        # diffuse_data = material['effect']['diffuse']
+        # emission_data = material['effect']['emission']
+        # specular_data = material['effect']['specular']
+        # if type(ambient_data) is list:
+        #     ambient = SubElement(phong, 'ambient')
+        #     ambient_data[3] /= 255
+        #     ambient_data = [str(item) for item in ambient_data]
+        #     SubElement(ambient, 'color').text = ' '.join(ambient_data)
+        # # else:
+        # #     SubElement(ambient, 'texture', texture=ambient_data, texcoord='CHANNEL0')
+        # if type(diffuse_data) is list:
+        #     diffuse = SubElement(phong, 'diffuse')
+        #     diffuse_data[3] /= 255
+        #     diffuse_data = [str(item) for item in diffuse_data]
+        #     SubElement(diffuse, 'color').text = ' '.join(diffuse_data)
+        # # else:
+        # #     SubElement(diffuse, 'texture', texture=diffuse_data, texcoord='CHANNEL0')
+        # if type(emission_data) is list:
+        #     emission = SubElement(phong, 'emission')
+        #     emission_data[3] /= 255
+        #     emission_data = [str(item) for item in emission_data]
+        #     SubElement(emission, 'color').text = ' '.join(emission_data)
+        # # else:
+        # #     SubElement(emission, 'texture', texture=emission_data, texcoord='CHANNEL0')
+        # if type(specular_data) is list:
+        #     specular = SubElement(phong, 'specular')
+        #     specular_data[3] /= 255
+        #     specular_data = [str(item) for item in specular_data]
+        #     SubElement(specular, 'color').text = ' '.join(specular_data)
+        # # else:
+        # #     SubElement(specular, 'texture', texture=specular_data, texcoord='CHANNEL0')
 
     def create_geometry(self, geometry: Geometry):
         geometry_name = geometry.get_name()

@@ -2,6 +2,7 @@ from typing import List
 
 from models_converter.formats.universal.camera import Camera
 from models_converter.formats.universal.geometry import Geometry
+from models_converter.formats.universal.material import Material
 from models_converter.formats.universal.node import Node
 
 
@@ -14,11 +15,14 @@ class Scene:
         self._cameras = []
         self._nodes = []
 
-    def get_materials(self) -> List:
+    def get_materials(self) -> List[Material]:
         return self._materials
 
-    def add_material(self, material):
+    def add_material(self, material: Material):
         self._materials.append(material)
+
+    def import_materials(self, animation_scene):
+        self._materials.extend(animation_scene.get_materials())
 
     def get_geometries(self) -> List[Geometry]:
         return self._geometries

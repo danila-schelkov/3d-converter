@@ -1,5 +1,6 @@
 import json
 
+from models_converter.formats.universal.material import Material
 from models_converter.utilities.matrix.matrix4x4 import Matrix4x4
 
 from models_converter.formats import universal
@@ -123,12 +124,15 @@ class Parser(ParserInterface):
 
         self.parse_bin()
 
+        if self._gltf.is_using_extension('SC_shader'):
+            self._parse_materials()
+
         scene_id = self._gltf.scene
         scene = self._gltf.scenes[scene_id]
 
         for node_id in scene.nodes:
             node = self._gltf.nodes[node_id]
-            self.parse_node(node)
+            self._parse_node(node)
 
         # TODO: animations
         # for animation in self.gltf.animations:
@@ -136,7 +140,18 @@ class Parser(ParserInterface):
         #         sampler: Animation.AnimationSampler = animation.samplers[channel.sampler]
         #         input_accessor = self.accessors[sampler.input]
 
-    def parse_node(self, gltf_node: Node, parent: str = None):
+    def _parse_materials(self):
+        for material in self._gltf.materials:
+            sc_shader = material.extensions['SC_shader']
+            material_name = sc_shader['name']
+
+            self.scene.add_material(Material(
+                name=material_name,
+                shader='shader/uber.vsh',
+                effect=Material.Effect()
+            ))
+
+    def _parse_node(self, gltf_node: Node, parent: str = None):
         node_name = gltf_node.name.split('|')[-1]
 
         node = universal.Node(
@@ -308,4 +323,4 @@ class Parser(ParserInterface):
         if gltf_node.children:
             for child_id in gltf_node.children:
                 child = self._gltf.nodes[child_id]
-                self.parse_node(child, node_name)
+                self._parse_node(child, node_name)

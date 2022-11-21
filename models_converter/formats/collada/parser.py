@@ -2,6 +2,7 @@ from xml.etree.ElementTree import *
 
 from .collada import NAMESPACE
 from ..universal import Node, Scene, Geometry
+from ..universal.material import Material
 from ...interfaces import ParserInterface
 from ...utilities import remove_suffix
 from ...utilities.matrix.matrix4x4 import Matrix4x4
@@ -92,24 +93,25 @@ class Parser(ParserInterface):
                     #     # diffuse_data = diffuse[0].attrib['texture']
                     #     diffuse_data = '.'
 
-                    material_data = {
-                        'name': material_name,
-                        'shader': 'shader/uber.vsh',
-                        'effect': {
-                            'ambient': [0, 0, 0, 255],  # ambient_data,
-                            'diffuse': '.',  # diffuse_data,
-                            'specular': '.',
-                            'colorize': [255, 255, 255, 255],
-                            'emission': [0, 0, 0, 255],  # emission_data,
-                            'lightmaps': {
-                                'diffuse': 'sc3d/diffuse_lightmap.png',
-                                'specular': 'sc3d/specular_lightmap.png'
-                            },
-                            'shader_define_flags': 3014
-                        }
-                    }
+                    # effect = {
+                    #     'ambient': [0, 0, 0, 255],  # ambient_data,
+                    #     'diffuse': '.',  # diffuse_data,
+                    #     'specular': '.',
+                    #     'colorize': [255, 255, 255, 255],
+                    #     'emission': [0, 0, 0, 255],  # emission_data,
+                    #     'lightmaps': {
+                    #         'diffuse': 'sc3d/diffuse_lightmap.png',
+                    #         'specular': 'sc3d/specular_lightmap.png'
+                    #     },
+                    #     'shader_define_flags': 3014
+                    # }
 
-                    self.scene.add_material(material_data)
+                    effect = Material.Effect()
+                    self.scene.add_material(Material(
+                        name=material_name,
+                        shader='shader/uber.vsh',
+                        effect=effect
+                    ))
 
     def parse_node(self, xml_nodes: list, parent: str = None):
         for xml_node in xml_nodes:

@@ -32,7 +32,7 @@ class Parser(ParserInterface):
             elif chunk_name == 'MATE':
                 mate = MATE(self.header)
                 mate.parse(chunk_data)
-                self.scene.add_material(mate)
+                self.scene.add_material(mate.material)
             elif chunk_name == 'GEOM':
                 geom = GEOM(self.header)
                 geom.parse(chunk_data)

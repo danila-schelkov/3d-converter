@@ -1,4 +1,5 @@
 from . import Chunk
+from ...universal.material import Material
 
 
 class MATE(Chunk):
@@ -6,11 +7,14 @@ class MATE(Chunk):
         super().__init__(header)
         self.chunk_name = 'MATE'
 
+        self.material = Material(name='default_material', shader=None, effect=Material.Effect)
+
     def parse(self, buffer: bytes):
         super().parse(buffer)
 
-        setattr(self, 'name', self.readString())
-        setattr(self, 'shader', self.readString())
+        self.material.set_name(self.readString())
+        self.material.set_shader(self.readString())
+
         setattr(self, 'v1', self.readUByte())
         setattr(self, 'v2', self.readUByte())
 
