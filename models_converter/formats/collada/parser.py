@@ -281,6 +281,8 @@ class Parser(ParserInterface):
             pass
         else:
             triangles = mesh.findall('collada:polylist', NAMESPACES)
+
+        vertices_inputs = []
         inputs = triangles[0].findall('collada:input', NAMESPACES)
         for _input in inputs:
             semantic = _input.attrib['semantic']
@@ -309,13 +311,16 @@ class Parser(ParserInterface):
             for x in range(0, len(points_temp), len(accessor)):
                 points.append(points_temp[x: x + len(accessor)])
 
-            geometry.add_vertex(Geometry.Vertex(
-                name='',
+            vertex = Geometry.Vertex(
+                name=source_link,
                 vertex_type=semantic,
                 vertex_index=len(geometry.get_vertices()),
                 vertex_scale=scale,
                 points=points
-            ))
+            )
+
+            vertices_inputs.append(vertex)
+            geometry.add_vertex(vertex)
         for triangle in triangles:
             triangles_material = triangle.attrib['material']
 
@@ -328,7 +333,11 @@ class Parser(ParserInterface):
                     for point_index in range(0, len(inputs) * 3, 3)
                 ] for polygon_index in range(0, len(triangles_temp), len(inputs) * 3)
             ]
-            geometry.add_material(Geometry.Material(name=triangles_material, triangles=triangles))
+            geometry.add_material(Geometry.Material(
+                name=triangles_material,
+                triangles=triangles,
+                input_vertices=vertices_inputs
+            ))
         self.scene.add_geometry(geometry)
 
         return geometry

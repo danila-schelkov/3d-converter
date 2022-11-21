@@ -120,7 +120,7 @@ class Parser(ParserInterface):
                     ))
                     self.scene.add_geometry(geometry)
                 self.scene.get_geometries()[-1].add_material(
-                    Geometry.Material(material, triangles)
+                    Geometry.Material(material, triangles, self.scene.get_geometries()[-1].get_vertices())
                 )
 
                 material = 'character_mat'

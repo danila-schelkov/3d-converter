@@ -216,6 +216,7 @@ class Parser(ParserInterface):
                     attributes = primitive.attributes
                     material_id = primitive.material
                     polygons_id = primitive.indices
+                    input_vertices = []
 
                     triangles = self._accessors[polygons_id]
 
@@ -274,13 +275,15 @@ class Parser(ParserInterface):
                                 geometry.add_weight(Geometry.Weight(joint_ids[x][3], weights[x][3]))
 
                         if points:
-                            geometry.add_vertex(Geometry.Vertex(
+                            vertex = Geometry.Vertex(
                                 name=f'{attribute_id.lower()}_{primitive_index}',
                                 vertex_type=attribute_id,
-                                vertex_index=len(geometry.get_vertices()),
+                                vertex_index=len(input_vertices),
                                 vertex_scale=1,
                                 points=points
-                            ))
+                            )
+                            input_vertices.append(vertex)
+                            geometry.add_vertex(vertex)
 
                     triangles = [
                         [
@@ -292,7 +295,7 @@ class Parser(ParserInterface):
                         ] for x in range(0, len(triangles), 3)
                     ]
 
-                    geometry.add_material(Geometry.Material(material_name, triangles))
+                    geometry.add_material(Geometry.Material(material_name, triangles, input_vertices))
 
                     for attribute_id in attributes:
                         if attribute_id == 'POSITION':

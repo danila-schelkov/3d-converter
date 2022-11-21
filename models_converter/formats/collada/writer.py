@@ -146,13 +146,7 @@ class Writer(WriterInterface):
                                            count=f'{len(material.get_triangles())}',
                                            material=material.get_name())
 
-            inputs_count = len(material.get_triangles()[0][0])
-            for vertex_index in range(len(geometry.get_vertices())):
-                if vertex_index == inputs_count:
-                    break
-
-                vertex = geometry.get_vertices()[vertex_index]
-
+            for vertex in material.get_input_vertices():
                 input_type = vertex.get_type()
                 if input_type == 'POSITION':
                     input_type = 'VERTEX'
@@ -161,7 +155,7 @@ class Writer(WriterInterface):
                 if input_type == 'VERTEX':
                     source_id = f'{source_id}-vertices'
 
-                self.dae.write_input(collada_triangles, input_type, source_id, vertex_index)
+                self.dae.write_input(collada_triangles, input_type, source_id, vertex.get_index())
             polygons = SubElement(collada_triangles, 'p')
 
             formatted_polygons_data = []

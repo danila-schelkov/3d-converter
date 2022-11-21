@@ -109,7 +109,7 @@ class GEOM(Chunk):
                     ] for _ in range(3)  # 3 points
                 ])
 
-            self.geometry.add_material(Geometry.Material(material_name, triangles))
+            self.geometry.add_material(Geometry.Material(material_name, triangles, self.geometry.get_vertices()))
 
     def encode(self):
         super().encode()

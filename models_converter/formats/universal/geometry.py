@@ -34,15 +34,20 @@ class Geometry:
             return self._points
 
     class Material:
-        def __init__(self, name: str, triangles: List[List[List[int]]]):
+        def __init__(self, name: str, triangles: List[List[List[int]]], input_vertices: List):
             self._name: str = name
             self._triangles: List[List[List[int]]] = triangles
+            self._input_vertices: List[Geometry.Vertex] = input_vertices
 
         def get_name(self) -> str:
             return self._name
 
         def get_triangles(self) -> List[List[List[int]]]:
             return self._triangles
+
+        # TODO: integrate to all formats
+        def get_input_vertices(self) -> List:
+            return self._input_vertices
 
     class Joint:
         def __init__(self, name: str, matrix: List[float] or None):
