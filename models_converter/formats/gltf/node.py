@@ -9,7 +9,7 @@ class Node(GlTFProperty):
         self.camera = None
         self.children = None
         self.skin = None
-        self.matrix = Matrix4x4(size=(4, 4))
+        self.matrix = Matrix4x4()
         self.mesh = None
         self.rotation = Quaternion()  # Default: [0, 0, 0, 1]
         self.scale = Vector3(1, 1, 1)  # Default: [1, 1, 1]

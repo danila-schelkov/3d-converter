@@ -5,10 +5,7 @@ from ..math import Vector3, Quaternion
 
 class Matrix4x4(Matrix):
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.translation_matrix = None
-        self.rotation_matrix = None
-        self.scale_matrix = None
+        super().__init__(size=(4, 4), **kwargs)
 
     def determinant(self):
         value1_1 = self.matrix[0][0]
@@ -188,37 +185,34 @@ class Matrix4x4(Matrix):
 
         self.find_cofactor()
 
-    def put_rotation(self, quaterion: Quaternion):
+    @staticmethod
+    def create_rotation_matrix(quaterion: Quaternion):
         x, y, z, w = quaterion.x, quaterion.y, quaterion.z, quaterion.w
 
-        rotation_matrix = (
+        return Matrix4x4(matrix=(
             (1-2*y**2-2*z**2, 2*x*y-2*z*w, 2*x*z+2*y*w, 0),  # x
             (2*x*y+2*z*w, 1-2*x**2-2*z**2, 2*y*z-2*x*w, 0),  # y
             (2*x*z-2*y*w, 2*y*z+2*x*w, 1-2*x**2-2*y**2, 0),  # z
             (0, 0, 0, 1)
-        )
+        ))
 
-        self.rotation_matrix = Matrix4x4(matrix=rotation_matrix)
-
-    def put_position(self, position: Vector3):
-        translation_matrix = (
+    @staticmethod
+    def create_translation_matrix(position: Vector3):
+        return Matrix4x4(matrix=(
             (1, 0, 0, position.x),  # x
             (0, 1, 0, position.y),  # y
             (0, 0, 1, position.z),  # z
             (0, 0, 0, 1)
-        )
+        ))
 
-        self.translation_matrix = Matrix4x4(matrix=translation_matrix)
-
-    def put_scale(self, scale: Vector3):
-        scale_matrix = (
+    @staticmethod
+    def create_scale_matrix(scale: Vector3):
+        return Matrix4x4(matrix=(
             (scale.x, 0, 0, 0),
             (0, scale.y, 0, 0),
             (0, 0, scale.z, 0),
             (0, 0, 0, 1)
-        )
-
-        self.scale_matrix = Matrix4x4(matrix=scale_matrix)
+        ))
 
     def get_rotation(self) -> Quaternion:
         return Quaternion()
@@ -226,13 +220,9 @@ class Matrix4x4(Matrix):
     def get_position(self) -> Vector3:
         position = Vector3(self.matrix[0][3], self.matrix[1][3], self.matrix[2][3])
 
-        self.put_position(position)
-
         return position
 
     def get_scale(self) -> Vector3:
         scale = Vector3(1, 1, 1)
-
-        self.put_scale(scale)
 
         return scale

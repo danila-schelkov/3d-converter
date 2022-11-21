@@ -1,17 +1,20 @@
+from typing import List
+
+
 class Matrix:
     def __init__(self, **kwargs):
         matrix = None
 
         if 'matrix' in kwargs:
             matrix = kwargs['matrix']
-
-        if 'size' in kwargs:
+        elif 'size' in kwargs:
             self.size = kwargs['size']
 
             matrix = self.get_identity_matrix(
                 self.size
             )
-        else:
+
+        if matrix is not None:
             self.size = (
                 len(matrix[0]),  # x
                 len(matrix)  # y
@@ -27,14 +30,14 @@ class Matrix:
 
             for row in self.matrix:
                 matrix_row = []
-                for column in range(4):
+                for column in range(self.size[0]):
                     s = 0
-                    for i in range(4):
+                    for i in range(self.size[1]):
                         s += row[i] * other.matrix[i][column]
                     matrix_row.append(s)
-                multiplied_matrix.append(matrix_row)
+                multiplied_matrix.append(tuple(matrix_row))
 
-            return Matrix(matrix=multiplied_matrix)
+            return type(self)(matrix=multiplied_matrix)
 
     def __mul__(self, other: int or float):
         multiplied_matrix = []
@@ -103,6 +106,12 @@ class Matrix:
             self.matrix = self.__mul__(1 / det).matrix
 
         return self
+
+    def get_linear_matrix(self) -> List[float]:
+        linear_matrix = []
+        for row in self.matrix:
+            linear_matrix.extend(row)
+        return linear_matrix
 
 
 __all__ = [

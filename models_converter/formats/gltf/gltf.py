@@ -24,3 +24,9 @@ class GlTF(GlTFProperty):
         self.scenes = Scene
         self.skins = Skin
         self.textures = Texture
+
+    def is_using_extension(self, extension_name: str) -> bool:
+        if self.extensions_used is None:
+            return False
+
+        return extension_name in self.extensions_used

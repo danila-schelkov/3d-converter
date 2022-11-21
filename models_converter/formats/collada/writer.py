@@ -354,15 +354,15 @@ class Writer(WriterInterface):
         for frame_index in range(len(node.get_frames())):
             frame = node.get_frames()[frame_index]
             frame_id = frame.get_id()
-            matrix = Matrix4x4(size=(4, 4))
+            matrix = Matrix4x4()
 
             time_input.append(str(frame_id / scene.get_frame_rate()))
 
-            matrix.put_rotation(frame.get_rotation())
-            matrix.put_position(frame.get_position())
-            matrix.put_scale(frame.get_scale())
+            rotation_matrix = matrix.create_rotation_matrix(frame.get_rotation())
+            translation_matrix = matrix.create_translation_matrix(frame.get_position())
+            scale_matrix = matrix.create_scale_matrix(frame.get_scale())
 
-            matrix = matrix.translation_matrix @ matrix.rotation_matrix @ matrix.scale_matrix
+            matrix = translation_matrix @ rotation_matrix @ scale_matrix
             matrix_values = []
             for row in matrix.matrix:
                 for column in row:

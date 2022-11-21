@@ -1,5 +1,7 @@
 import json
 
+from models_converter.utilities.matrix.matrix4x4 import Matrix4x4
+
 from models_converter.formats import universal
 from models_converter.formats.gltf.chunk import GlTFChunk
 from models_converter.formats.gltf.gltf import GlTF
@@ -11,41 +13,41 @@ from models_converter.utilities.reader import Reader
 
 class Parser(ParserInterface):
     def __init__(self, data: bytes):
-        self.file_data = data
+        self._file_data = data
 
         self.scene = Scene()
 
-        self.version = None
-        self.length = None
+        self._version: int = 0
+        self._length: int = 0
 
-        self.json_chunk = None
-        self.bin_chunk = None
+        self._json_chunk: GlTFChunk or None = None
+        self._bin_chunk: GlTFChunk or None = None
 
-        self.buffer_views = []
-        self.accessors = []
-        self.buffers = []
+        self._buffer_views = []
+        self._accessors = []
+        self._buffers = []
 
-        self.gltf = GlTF()
+        self._gltf = GlTF()
 
     def parse_bin(self):
-        reader = Reader(self.bin_chunk.data, 'little')
+        reader = Reader(self._bin_chunk.data, 'little')
 
-        for buffer in self.gltf.buffers:
+        for buffer in self._gltf.buffers:
             parsed_buffer = reader.read(buffer.byte_length)
-            self.buffers.append(parsed_buffer)
+            self._buffers.append(parsed_buffer)
 
-        for buffer_view in self.gltf.buffer_views:
-            reader.__init__(self.buffers[buffer_view.buffer], 'little')
+        for buffer_view in self._gltf.buffer_views:
+            reader.__init__(self._buffers[buffer_view.buffer], 'little')
 
             reader.read(buffer_view.byte_offset)
 
             length = buffer_view.byte_length
             data = reader.read(length)
 
-            self.buffer_views.append(data)
+            self._buffer_views.append(data)
 
-        for accessor in self.gltf.accessors:
-            reader.__init__(self.buffer_views[accessor.buffer_view], 'little')
+        for accessor in self._gltf.accessors:
+            reader.__init__(self._buffer_views[accessor.buffer_view], 'little')
 
             reader.read(accessor.byte_offset)
 
@@ -82,7 +84,7 @@ class Parser(ParserInterface):
             read_type, bytes_per_element = types[accessor.component_type]
             default_stride = bytes_per_element * components_count
 
-            stride = self.gltf.buffer_views[accessor.buffer_view].byte_stride or default_stride
+            stride = self._gltf.buffer_views[accessor.buffer_view].byte_stride or default_stride
 
             elements_per_stride = stride // bytes_per_element
             elements_count = accessor.count * elements_per_stride
@@ -91,41 +93,41 @@ class Parser(ParserInterface):
             for i in range(elements_count):
                 temp_list.append(read_type())
 
-            self.accessors.append([
+            self._accessors.append([
                 temp_list[i:i + components_count]
                 for i in range(0, elements_count, elements_per_stride)
             ])
 
     def parse(self):
-        reader = Reader(self.file_data, 'little')
+        reader = Reader(self._file_data, 'little')
 
         magic = reader.read(4)
         if magic != b'glTF':
             raise TypeError('Wrong file magic! "676c5446" expected, but given is ' + magic.hex())
 
-        self.version = reader.readUInt32()
-        self.length = reader.readUInt32()
+        self._version = reader.readUInt32()
+        self._length = reader.readUInt32()
 
-        self.json_chunk = GlTFChunk()
-        self.bin_chunk = GlTFChunk()
+        self._json_chunk = GlTFChunk()
+        self._bin_chunk = GlTFChunk()
 
-        self.json_chunk.chunk_length = reader.readUInt32()
-        self.json_chunk.chunk_name = reader.read(4)
-        self.json_chunk.data = reader.read(self.json_chunk.chunk_length)
+        self._json_chunk.chunk_length = reader.readUInt32()
+        self._json_chunk.chunk_name = reader.read(4)
+        self._json_chunk.data = reader.read(self._json_chunk.chunk_length)
 
-        self.bin_chunk.chunk_length = reader.readUInt32()
-        self.bin_chunk.chunk_name = reader.read(4)
-        self.bin_chunk.data = reader.read(self.bin_chunk.chunk_length)
+        self._bin_chunk.chunk_length = reader.readUInt32()
+        self._bin_chunk.chunk_name = reader.read(4)
+        self._bin_chunk.data = reader.read(self._bin_chunk.chunk_length)
 
-        self.gltf.from_dict(json.loads(self.json_chunk.data))
+        self._gltf.from_dict(json.loads(self._json_chunk.data))
 
         self.parse_bin()
 
-        scene_id = self.gltf.scene
-        scene = self.gltf.scenes[scene_id]
+        scene_id = self._gltf.scene
+        scene = self._gltf.scenes[scene_id]
 
         for node_id in scene.nodes:
-            node = self.gltf.nodes[node_id]
+            node = self._gltf.nodes[node_id]
             self.parse_node(node)
 
         # TODO: animations
@@ -148,8 +150,8 @@ class Parser(ParserInterface):
         rotation = gltf_node.rotation
 
         instance = None
-        if gltf_node.mesh is not None and type(self.gltf.meshes) is list:
-            mesh = self.gltf.meshes[gltf_node.mesh]
+        if gltf_node.mesh is not None and type(self._gltf.meshes) is list:
+            mesh = self._gltf.meshes[gltf_node.mesh]
             mesh_name = mesh.name.split('|')
 
             group = 'GEO'
@@ -161,23 +163,42 @@ class Parser(ParserInterface):
             geometry = Geometry(name=name, group=group)
 
             if gltf_node.skin is not None:
+                skin_id = gltf_node.skin
+                skin = self._gltf.skins[skin_id]
+
                 instance = universal.Node.Instance(name=geometry.get_name(), instance_type='CONT')
 
-                geometry.set_controller_bind_matrix([
-                    1, 0, 0, translation.x,
-                    0, 1, 0, translation.y,
-                    0, 0, 1, translation.z,
-                    0, 0, 0, 1
-                ])
+                translation_matrix = Matrix4x4.create_translation_matrix(translation)
+                rotation_matrix = Matrix4x4.create_rotation_matrix(rotation)
+                scale_matrix = Matrix4x4.create_scale_matrix(scale)
 
-                skin_id = gltf_node.skin
-                skin = self.gltf.skins[skin_id]
-                bind_matrices = self.accessors[skin.inverse_bind_matrices]
-                bind_matrices = [[*m[0::4], *m[1::4], *m[2::4], *m[3::4]] for m in bind_matrices]
+                controller_bind_matrix = translation_matrix @ rotation_matrix @ scale_matrix
+
+                geometry.set_controller_bind_matrix(controller_bind_matrix.get_linear_matrix())
+
+                translation_matrix.inverse()
+                rotation_matrix.inverse()
+                scale_matrix.inverse()
+
+                inverse_controller_bind_matrix = (translation_matrix @ rotation_matrix @ scale_matrix)
+
+                bind_matrices_accessor = self._accessors[skin.inverse_bind_matrices]
+                bind_matrices = []
+                for bind_matrix in bind_matrices_accessor:
+                    bind_matrix_ = Matrix4x4(matrix=[
+                        bind_matrix[0::4],
+                        bind_matrix[1::4],
+                        bind_matrix[2::4],
+                        bind_matrix[3::4]
+                    ])
+
+                    bind_matrices.append(
+                        (bind_matrix_ @ inverse_controller_bind_matrix).get_linear_matrix()
+                    )
 
                 for joint in skin.joints:
                     joint_index = skin['joints'].index(joint)
-                    joint_node = self.gltf.nodes[joint]
+                    joint_node = self._gltf.nodes[joint]
                     joint_name = joint_node['name']
                     matrix = bind_matrices[joint_index]
 
@@ -196,12 +217,12 @@ class Parser(ParserInterface):
                     material_id = primitive.material
                     polygons_id = primitive.indices
 
-                    triangles = self.accessors[polygons_id]
+                    triangles = self._accessors[polygons_id]
 
                     material_name = f'{name}_material'
                     if primitive.material is not None:
-                        material = self.gltf.materials[material_id]
-                        if 'SC_shader' in material.extensions:
+                        material = self._gltf.materials[material_id]
+                        if self._gltf.is_using_extension('SC_shader'):
                             material_name = material.extensions['SC_shader']['name']
                     instance.add_bind(material_name, material_name)
 
@@ -216,35 +237,35 @@ class Parser(ParserInterface):
                         points = None
 
                         if attribute_id == 'POSITION':
-                            position = self.accessors[attribute]
+                            position = self._accessors[attribute]
                             points = list(map(
                                 lambda point: (
-                                    point[0] * scale.x,
-                                    point[1] * scale.y,
-                                    point[2] * scale.z
+                                    point[0],
+                                    point[1],
+                                    point[2]
                                 ),
                                 position
                             ))
                         elif attribute_id == 'NORMAL':
-                            normal = self.accessors[attribute]
+                            normal = self._accessors[attribute]
                             points = list(map(
                                 lambda point: (
-                                    point[0] * gltf_node.scale.x,
-                                    point[1] * gltf_node.scale.y,
-                                    point[2] * gltf_node.scale.z
+                                    point[0],
+                                    point[1],
+                                    point[2]
                                 ),
                                 normal
                             ))
                         elif attribute_id.startswith('TEXCOORD'):
-                            texcoord = self.accessors[attribute]
+                            texcoord = self._accessors[attribute]
 
                             attribute_id = 'TEXCOORD'
                             # TODO: look how to resize it this
-                            points = [[item[0], 1 - item[1]] for item in texcoord]
+                            points = [[item[0] / 4064, item[1] / 4064] for item in texcoord]
                         elif attribute_id.startswith('JOINTS'):
-                            joint_ids = self.accessors[attribute]
+                            joint_ids = self._accessors[attribute]
                         elif attribute_id.startswith('WEIGHTS'):
-                            weights = self.accessors[attribute]
+                            weights = self._accessors[attribute]
 
                             for x in range(len(joint_ids)):
                                 geometry.add_weight(Geometry.Weight(joint_ids[x][0], weights[x][0]))
@@ -297,5 +318,5 @@ class Parser(ParserInterface):
 
         if gltf_node.children:
             for child_id in gltf_node.children:
-                child = self.gltf.nodes[child_id]
+                child = self._gltf.nodes[child_id]
                 self.parse_node(child, node_name)
