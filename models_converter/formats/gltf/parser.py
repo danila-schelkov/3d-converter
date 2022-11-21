@@ -262,7 +262,7 @@ class Parser(ParserInterface):
 
                             attribute_id = 'TEXCOORD'
                             # TODO: look how to resize it this
-                            points = [[item[0] / 4064, item[1] / 4064] for item in texcoord]
+                            points = [[item[0] / 4096, 1 - item[1] / 4096] for item in texcoord]
                         elif attribute_id.startswith('JOINTS'):
                             joint_ids = self._accessors[attribute]
                         elif attribute_id.startswith('WEIGHTS'):
