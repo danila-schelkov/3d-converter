@@ -31,23 +31,23 @@ class GEOM(Chunk):
 
     def _parse_vertices(self):
         vertex_count = self.readUByte()
-        for x in range(vertex_count):
+        for _ in range(vertex_count):
             vertex_type = self.readString()
             vertex_index = self.readUByte()
             self.readUByte()  # sub_index
             vertex_stride = self.readUByte()
-            vertex_scale = self.readFloat()
+            vertex_scale = self.readFloat() / 32512
             vertex_count = self.readUInt32()
 
             if vertex_type == 'VERTEX':
                 vertex_type = 'POSITION'
 
             coordinates = []
-            for x1 in range(vertex_count):
-                coordinates_massive = [self.readNShort() for _ in range(vertex_stride)]
+            for _ in range(vertex_count):
+                coordinates_massive = [self.readShort() for _ in range(vertex_stride)]
 
                 if vertex_type == 'TEXCOORD':
-                    coordinates_massive[1::2] = [1 - x for x in coordinates_massive[1::2]]
+                    coordinates_massive[1::2] = [1 - v for v in coordinates_massive[1::2]]
                 coordinates.append(coordinates_massive)
 
             self.geometry.add_vertex(Geometry.Vertex(
@@ -132,14 +132,12 @@ class GEOM(Chunk):
             self.writeUByte(vertex.get_index())
             self.writeUByte(0)  # sub_index
             self.writeUByte(vertex.get_point_size())
-            self.writeFloat(vertex.get_scale())
+            self.writeFloat(vertex.get_scale() * 32512)
             self.writeUInt32(len(vertex.get_points()))
             for point in vertex.get_points():
                 if vertex.get_type() == 'TEXCOORD':
-                    point[1::2] = [1 - x for x in point[1::2]]
+                    point[1::2] = [1 - v for v in point[1::2]]
                 for coordinate in point:
-                    # coordinate /= vertex['scale']
-                    coordinate *= 32512
                     self.writeShort(round(coordinate))
 
     def _encode_skin(self):
