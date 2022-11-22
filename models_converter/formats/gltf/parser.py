@@ -30,7 +30,7 @@ class Parser(ParserInterface):
 
         self._gltf = GlTF()
 
-    def parse_bin(self):
+    def _parse_bin(self):
         reader = Reader(self._bin_chunk.data, 'little')
 
         for buffer in self._gltf.buffers:
@@ -122,7 +122,7 @@ class Parser(ParserInterface):
 
         self._gltf.from_dict(json.loads(self._json_chunk.data))
 
-        self.parse_bin()
+        self._parse_bin()
 
         if self._gltf.is_using_extension('SC_shader'):
             self._parse_materials()
@@ -153,6 +153,10 @@ class Parser(ParserInterface):
 
     def _parse_node(self, gltf_node: Node, parent: str = None):
         node_name = gltf_node.name.split('|')[-1]
+
+        if node_name.endswith(':SSC'):  # or node_name.endswith(':PIV')
+            self._process_node_children(gltf_node.children, parent)
+            return
 
         node = universal.Node(
             name=node_name,
@@ -320,7 +324,12 @@ class Parser(ParserInterface):
 
         self.scene.add_node(node)
 
-        if gltf_node.children:
-            for child_id in gltf_node.children:
-                child = self._gltf.nodes[child_id]
-                self._parse_node(child, node_name)
+        self._process_node_children(gltf_node.children, node_name)
+
+    def _process_node_children(self, node_children, node_name):
+        if not node_children:
+            return
+
+        for child_id in node_children:
+            child = self._gltf.nodes[child_id]
+            self._parse_node(child, node_name)
