@@ -1,6 +1,1 @@
-__all__ = [
-    'scw',
-    'collada',
-    'wavefront',
-    'gltf'
-]
+__all__ = ["scw", "collada", "wavefront", "gltf"]

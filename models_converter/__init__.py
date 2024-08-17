@@ -1,4 +1,1 @@
-__all__ = [
-    'formats',
-    'utilities'
-]
+__all__ = ["formats", "utilities"]

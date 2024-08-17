@@ -1,5 +1,7 @@
 class Camera:
-    def __init__(self, *, name: str, fov: float, aspect_ratio: float, near: float, far: float):
+    def __init__(
+        self, *, name: str, fov: float, aspect_ratio: float, near: float, far: float
+    ):
         self._name: str = name
         self._v1: float = 0
         self._fov: float = fov

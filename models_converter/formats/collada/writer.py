@@ -1,4 +1,5 @@
-from xml.etree.ElementTree import *
+from typing import Optional
+from xml.etree.ElementTree import SubElement, tostring, Element
 
 from .collada import Collada
 from ..universal import Scene, Node, Geometry
@@ -12,105 +13,112 @@ class Writer(WriterInterface):
         self.writen = None
         self.dae = Collada()
 
-        self.library_materials = None
-        self.library_effects = None
-        self.library_images = None
-        self.library_geometries = None
-        self.library_controllers = None
-        self.library_animations = None
-        self.library_cameras = None
-        self.library_visual_scenes = None
+        self.library_materials: Optional[SubElement] = None
+        self.library_effects: Optional[SubElement] = None
+        self.library_images: Optional[SubElement] = None
+        self.library_geometries: Optional[SubElement] = None
+        self.library_controllers: Optional[SubElement] = None
+        self.library_animations: Optional[SubElement] = None
+        self.library_cameras: Optional[SubElement] = None
+        self.library_visual_scenes: Optional[SubElement] = None
 
-    def create_libraries(self):
-        self.library_materials = SubElement(self.dae.root, 'library_materials')
-        self.library_effects = SubElement(self.dae.root, 'library_effects')
-        # self.library_images = SubElement(dae.collada, 'library_images')
-        self.library_geometries = SubElement(self.dae.root, 'library_geometries')
-        self.library_controllers = SubElement(self.dae.root, 'library_controllers')
-        self.library_animations = SubElement(self.dae.root, 'library_animations')
-        # self.library_cameras = SubElement(self.dae.collada, 'library_cameras')
-        self.library_visual_scenes = SubElement(self.dae.root, 'library_visual_scenes')
+    def _create_libraries(self):
+        self.library_materials = SubElement(self.dae.root, "library_materials")
+        self.library_effects = SubElement(self.dae.root, "library_effects")
+        # self.library_images = SubElement(dae.collada, "library_images")
+        self.library_geometries = SubElement(self.dae.root, "library_geometries")
+        self.library_controllers = SubElement(self.dae.root, "library_controllers")
+        self.library_animations = SubElement(self.dae.root, "library_animations")
+        # self.library_cameras = SubElement(self.dae.collada, "library_cameras")
+        self.library_visual_scenes = SubElement(self.dae.root, "library_visual_scenes")
 
-    def sign(self):
-        asset = SubElement(self.dae.root, 'asset')
+    def _sign(self):
+        asset = SubElement(self.dae.root, "asset")
 
-        contributor = SubElement(asset, 'contributor')
-        SubElement(contributor, 'author').text = 'Vorono4ka'
-        SubElement(contributor, 'authoring_tool').text = 'models_converter (https://github.com/vorono4ka/3d-converter)'
+        contributor = SubElement(asset, "contributor")
+        SubElement(contributor, "author").text = "Vorono4ka"
+        SubElement(contributor, "authoring_tool").text = (
+            "models_converter (https://github.com/vorono4ka/3d-converter)"
+        )
 
         return contributor
 
     def write(self, scene: Scene):
-        contributor = self.sign()
+        contributor = self._sign()
 
-        # if 'version' in data['header']:
-        #     SubElement(contributor, 'comments').text = 'Version: ' + str(data['header']['version'])
+        # if "version" in data["header"]:
+        #     SubElement(contributor, "comments").text = "Version: " + str(data["header"]["version"])
 
-        self.create_libraries()
+        self._create_libraries()
 
         for material in scene.get_materials():
-            self.create_material(material)
+            self._create_material(material)
 
         for geometry in scene.get_geometries():
-            geometry_name = self.create_geometry(geometry)
+            geometry_name = self._create_geometry(geometry)
 
             if geometry.has_controller():
-                self.create_controller(geometry_name, geometry)
+                self._create_controller(geometry_name, geometry)
 
-        self.create_scene(scene)
+        if len(scene.get_nodes()) > 0:
+            self._create_scene(scene)
 
         self.writen = tostring(self.dae.root, xml_declaration=True).decode()
 
-    def create_material(self, material: Material):
+    def _create_material(self, material: Material):
         material_name = material.get_name()
-        effect_name = f'{material_name}-effect'
+        effect_name = f"{material_name}-effect"
 
-        collada_material = SubElement(self.library_materials, 'material', id=material_name)
-        SubElement(collada_material, 'instance_effect', url=f'#{effect_name}')
+        collada_material = SubElement(
+            self.library_materials, "material", id=material_name
+        )
+        SubElement(collada_material, "instance_effect", url=f"#{effect_name}")
 
-        effect = SubElement(self.library_effects, 'effect', id=effect_name)
+        effect = SubElement(self.library_effects, "effect", id=effect_name)
 
-        profile = SubElement(effect, 'profile_COMMON')
-        technique = SubElement(profile, 'technique', sid='common')
-        phong = SubElement(technique, 'phong')
+        profile = SubElement(effect, "profile_COMMON")
+        technique = SubElement(profile, "technique", sid="common")
+        phong = SubElement(technique, "phong")
 
-        # ambient_data = material['effect']['ambient']
-        # diffuse_data = material['effect']['diffuse']
-        # emission_data = material['effect']['emission']
-        # specular_data = material['effect']['specular']
+        # ambient_data = material["effect"]["ambient"]
+        # diffuse_data = material["effect"]["diffuse"]
+        # emission_data = material["effect"]["emission"]
+        # specular_data = material["effect"]["specular"]
         # if type(ambient_data) is list:
-        #     ambient = SubElement(phong, 'ambient')
+        #     ambient = SubElement(phong, "ambient")
         #     ambient_data[3] /= 255
         #     ambient_data = [str(item) for item in ambient_data]
-        #     SubElement(ambient, 'color').text = ' '.join(ambient_data)
+        #     SubElement(ambient, "color").text = " ".join(ambient_data)
         # # else:
-        # #     SubElement(ambient, 'texture', texture=ambient_data, texcoord='CHANNEL0')
+        # #     SubElement(ambient, "texture", texture=ambient_data, texcoord="CHANNEL0")
         # if type(diffuse_data) is list:
-        #     diffuse = SubElement(phong, 'diffuse')
+        #     diffuse = SubElement(phong, "diffuse")
         #     diffuse_data[3] /= 255
         #     diffuse_data = [str(item) for item in diffuse_data]
-        #     SubElement(diffuse, 'color').text = ' '.join(diffuse_data)
+        #     SubElement(diffuse, "color").text = " ".join(diffuse_data)
         # # else:
-        # #     SubElement(diffuse, 'texture', texture=diffuse_data, texcoord='CHANNEL0')
+        # #     SubElement(diffuse, "texture", texture=diffuse_data, texcoord="CHANNEL0")
         # if type(emission_data) is list:
-        #     emission = SubElement(phong, 'emission')
+        #     emission = SubElement(phong, "emission")
         #     emission_data[3] /= 255
         #     emission_data = [str(item) for item in emission_data]
-        #     SubElement(emission, 'color').text = ' '.join(emission_data)
+        #     SubElement(emission, "color").text = " ".join(emission_data)
         # # else:
-        # #     SubElement(emission, 'texture', texture=emission_data, texcoord='CHANNEL0')
+        # #     SubElement(emission, "texture", texture=emission_data, texcoord="CHANNEL0")
         # if type(specular_data) is list:
-        #     specular = SubElement(phong, 'specular')
+        #     specular = SubElement(phong, "specular")
         #     specular_data[3] /= 255
         #     specular_data = [str(item) for item in specular_data]
-        #     SubElement(specular, 'color').text = ' '.join(specular_data)
+        #     SubElement(specular, "color").text = " ".join(specular_data)
         # # else:
-        # #     SubElement(specular, 'texture', texture=specular_data, texcoord='CHANNEL0')
+        # #     SubElement(specular, "texture", texture=specular_data, texcoord="CHANNEL0")
 
-    def create_geometry(self, geometry: Geometry):
+    def _create_geometry(self, geometry: Geometry):
         geometry_name = geometry.get_name()
-        collada_geometry = SubElement(self.library_geometries, 'geometry', id=f'{geometry_name}-geom')
-        mesh = SubElement(collada_geometry, 'mesh')
+        collada_geometry = SubElement(
+            self.library_geometries, "geometry", id=f"{geometry_name}-geom"
+        )
+        mesh = SubElement(collada_geometry, "mesh")
 
         for vertex in geometry.get_vertices():
             params = []
@@ -120,47 +128,55 @@ class Writer(WriterInterface):
             coordinate = vertex.get_points()
             stride = len(coordinate[0])
 
-            if vertex_type == 'VERTEX':
-                vertex_type = 'POSITION'
+            if vertex_type == "VERTEX":
+                vertex_type = "POSITION"
 
-            source_name = f'{geometry_name}-{vertex_name}'
+            source_name = f"{geometry_name}-{vertex_name}"
 
-            if vertex_type in ['POSITION', 'NORMAL']:
-                params.append({'name': 'X', 'type': 'float'})
-                params.append({'name': 'Y', 'type': 'float'})
-                params.append({'name': 'Z', 'type': 'float'})
-            elif vertex_type in ['TEXCOORD']:
-                params.append({'name': 'S', 'type': 'float'})
-                params.append({'name': 'T', 'type': 'float'})
+            if vertex_type in ["POSITION", "NORMAL"]:
+                params.append({"name": "X", "type": "float"})
+                params.append({"name": "Y", "type": "float"})
+                params.append({"name": "Z", "type": "float"})
+            elif vertex_type in ["TEXCOORD"]:
+                params.append({"name": "S", "type": "float"})
+                params.append({"name": "T", "type": "float"})
 
             self.dae.write_source(
                 mesh,
                 source_name,
-                'float_array',
-                tuple(' '.join(str(sub_item * vertex.get_scale()) for sub_item in item) for item in coordinate),
+                "float_array",
+                tuple(
+                    " ".join(str(sub_item * vertex.get_scale()) for sub_item in item)
+                    for item in coordinate
+                ),
                 stride,
-                params
+                params,
             )
 
-            if vertex_type == 'POSITION':
-                vertices = SubElement(mesh, 'vertices', id=f'{source_name}-vertices')
-                self.dae.write_input(vertices, 'POSITION', source_name)
+            if vertex_type == "POSITION":
+                vertices = SubElement(mesh, "vertices", id=f"{source_name}-vertices")
+                self.dae.write_input(vertices, "POSITION", source_name)
         for primitive in geometry.get_primitives():
-            collada_triangles = SubElement(mesh, 'triangles',
-                                           count=f'{len(primitive.get_triangles())}',
-                                           material=primitive.get_material_name())
+            collada_triangles = SubElement(
+                mesh,
+                "triangles",
+                count=f"{len(primitive.get_triangles())}",
+                material=primitive.get_material_name(),
+            )
 
             for vertex in primitive.get_input_vertices():
                 input_type = vertex.get_type()
-                if input_type == 'POSITION':
-                    input_type = 'VERTEX'
+                if input_type == "POSITION":
+                    input_type = "VERTEX"
 
-                source_id = f'{geometry_name}-{vertex.get_name()}'
-                if input_type == 'VERTEX':
-                    source_id = f'{source_id}-vertices'
+                source_id = f"{geometry_name}-{vertex.get_name()}"
+                if input_type == "VERTEX":
+                    source_id = f"{source_id}-vertices"
 
-                self.dae.write_input(collada_triangles, input_type, source_id, vertex.get_index())
-            polygons = SubElement(collada_triangles, 'p')
+                self.dae.write_input(
+                    collada_triangles, input_type, source_id, vertex.get_index()
+                )
+            polygons = SubElement(collada_triangles, "p")
 
             formatted_polygons_data = []
             for triangle in primitive.get_triangles():
@@ -168,35 +184,42 @@ class Writer(WriterInterface):
                     for coordinate in point:
                         formatted_polygons_data.append(str(coordinate))
 
-            polygons.text = ' '.join(formatted_polygons_data)
+            polygons.text = " ".join(formatted_polygons_data)
         return geometry_name
 
-    def create_controller(self, geometry_name: str, geometry: Geometry):
-        controller = SubElement(self.library_controllers, 'controller', id=f'{geometry_name}-cont')
-        skin = SubElement(controller, 'skin', source=f'#{geometry_name}-geom')
+    def _create_controller(self, geometry_name: str, geometry: Geometry):
+        controller = SubElement(
+            self.library_controllers, "controller", id=f"{geometry_name}-cont"
+        )
+        skin = SubElement(controller, "skin", source=f"#{geometry_name}-geom")
 
-        SubElement(skin, 'bind_shape_matrix').text = ' '.join(map(str, geometry.get_bind_matrix()))
+        SubElement(skin, "bind_shape_matrix").text = " ".join(
+            map(str, geometry.get_bind_matrix())
+        )
 
-        joints_names_source_id = f'{geometry_name}-joints'
-        joints_matrices_source_id = f'{geometry_name}-joints-bind-matrices'
-        weights_source_id = f'{geometry_name}-weights'
+        joints_names_source_id = f"{geometry_name}-joints"
+        joints_matrices_source_id = f"{geometry_name}-joints-bind-matrices"
+        weights_source_id = f"{geometry_name}-weights"
 
         self.dae.write_source(
             skin,
             joints_names_source_id,
-            'Name_array',
+            "Name_array",
             tuple(joint.get_name() for joint in geometry.get_joints()),
             1,
-            [{'name': 'JOINT', 'type': 'name'}]
+            [{"name": "JOINT", "type": "name"}],
         )
 
         self.dae.write_source(
             skin,
             joints_matrices_source_id,
-            'float_array',
-            tuple(' '.join(map(str, joint.get_matrix())) for joint in geometry.get_joints()),
+            "float_array",
+            tuple(
+                " ".join(map(str, joint.get_matrix()))
+                for joint in geometry.get_joints()
+            ),
             16,
-            [{'name': 'TRANSFORM', 'type': 'float4x4'}]
+            [{"name": "TRANSFORM", "type": "float4x4"}],
         )
 
         vertex_weights = []
@@ -219,81 +242,96 @@ class Writer(WriterInterface):
         self.dae.write_source(
             skin,
             weights_source_id,
-            'float_array',
+            "float_array",
             tuple(map(str, unique_weights)),
             1,
-            [{'name': 'WEIGHT', 'type': 'float'}]
+            [{"name": "WEIGHT", "type": "float"}],
         )
 
-        joints = SubElement(skin, 'joints')
-        self.dae.write_input(joints, 'JOINT', joints_names_source_id)
-        self.dae.write_input(joints, 'INV_BIND_MATRIX', joints_matrices_source_id)
+        joints = SubElement(skin, "joints")
+        self.dae.write_input(joints, "JOINT", joints_names_source_id)
+        self.dae.write_input(joints, "INV_BIND_MATRIX", joints_matrices_source_id)
 
-        collada_vertex_weights = SubElement(skin, 'vertex_weights', count=f'{len(vcount)}')
-        self.dae.write_input(collada_vertex_weights, 'JOINT', joints_names_source_id, 0)
-        self.dae.write_input(collada_vertex_weights, 'WEIGHT', weights_source_id, 1)
+        collada_vertex_weights = SubElement(
+            skin, "vertex_weights", count=f"{len(vcount)}"
+        )
+        self.dae.write_input(collada_vertex_weights, "JOINT", joints_names_source_id, 0)
+        self.dae.write_input(collada_vertex_weights, "WEIGHT", weights_source_id, 1)
 
-        SubElement(collada_vertex_weights, 'vcount').text = ' '.join(map(str, vcount))
-        SubElement(collada_vertex_weights, 'v').text = ' '.join(map(str, vertex_weights))
+        SubElement(collada_vertex_weights, "vcount").text = " ".join(map(str, vcount))
+        SubElement(collada_vertex_weights, "v").text = " ".join(
+            map(str, vertex_weights)
+        )
 
-    def create_animation(self, node_name, frames, matrix_output, time_input):
-        animation = SubElement(self.library_animations, 'animation', id=node_name)
+    def _create_animation(self, node_name, frames, matrix_output, time_input):
+        animation = SubElement(self.library_animations, "animation", id=node_name)
 
         self.dae.write_source(
             animation,
-            f'{node_name}-time-input',
-            'float_array',
+            f"{node_name}-time-input",
+            "float_array",
             time_input,
             1,
-            [{'name': 'TIME', 'type': 'float'}]
+            [{"name": "TIME", "type": "float"}],
         )
 
         self.dae.write_source(
             animation,
-            f'{node_name}-matrix-output',
-            'float_array',
+            f"{node_name}-matrix-output",
+            "float_array",
             matrix_output,
             16,
-            [{'name': 'TRANSFORM', 'type': 'float4x4'}]
+            [{"name": "TRANSFORM", "type": "float4x4"}],
         )
 
         self.dae.write_source(
             animation,
-            f'{node_name}-interpolation',
-            'Name_array',
-            tuple('LINEAR' for _ in range(len(frames))),
+            f"{node_name}-interpolation",
+            "Name_array",
+            tuple("LINEAR" for _ in range(len(frames))),
             1,
-            [{'name': 'INTERPOLATION', 'type': 'name'}]
+            [{"name": "INTERPOLATION", "type": "name"}],
         )
 
-        sampler = SubElement(animation, 'sampler', id=f'{node_name}-sampler')
+        sampler = SubElement(animation, "sampler", id=f"{node_name}-sampler")
 
-        self.dae.write_input(
-            sampler,
-            'INPUT',
-            f'{node_name}-time-input'
+        self.dae.write_input(sampler, "INPUT", f"{node_name}-time-input")
+
+        self.dae.write_input(sampler, "OUTPUT", f"{node_name}-matrix-output")
+
+        self.dae.write_input(sampler, "INTERPOLATION", f"{node_name}-interpolation")
+
+        SubElement(
+            animation,
+            "channel",
+            source=f"#{node_name}-sampler",
+            target=f"{node_name}/transform",
         )
 
-        self.dae.write_input(
-            sampler,
-            'OUTPUT',
-            f'{node_name}-matrix-output'
+    def _create_scene(self, scene: Scene):
+        visual_scene = SubElement(
+            self.library_visual_scenes,
+            "visual_scene",
+            id="3dConverterScene",
+            name="3d-Converter Scene",
         )
 
-        self.dae.write_input(
-            sampler,
-            'INTERPOLATION',
-            f'{node_name}-interpolation'
+        not_joint_nodes = self._get_not_joint_nodes(scene)
+        skeleton_node = self._get_skeleton_node(scene)
+
+        for node in scene.get_nodes():
+            self._create_node(visual_scene, node, scene, not_joint_nodes, skeleton_node)
+
+        collada_scene = SubElement(self.dae.root, "scene")
+        SubElement(
+            collada_scene,
+            "instance_visual_scene",
+            url="#3dConverterScene",
+            name="3d-Converter Scene",
         )
 
-        SubElement(animation, 'channel',
-                   source=f'#{node_name}-sampler',
-                   target=f'{node_name}/transform')
-
-    def create_scene(self, scene: Scene):
-        visual_scene = SubElement(self.library_visual_scenes, 'visual_scene',
-                                  id='3dConverterScene',
-                                  name='3d-Converter Scene')
+    @staticmethod
+    def _get_not_joint_nodes(scene: Scene):
         not_joint_nodes = []
         node_index = 0
         parent_name = None
@@ -301,51 +339,79 @@ class Writer(WriterInterface):
             if len(not_joint_nodes) > 0:
                 parent_name = not_joint_nodes[node_index]
 
-            for _node in scene.get_nodes():
-                if _node.get_instances() or _node.get_name() == parent_name:
-                    if not (_node.get_name() in not_joint_nodes):
-                        not_joint_nodes.append(_node.get_name())
-                    if not (_node.get_parent() in not_joint_nodes):
-                        not_joint_nodes.append(_node.get_parent())
+            for node in scene.get_nodes():
+                if node.get_instances() or node.get_name() == parent_name:
+                    if not (node.get_name() in not_joint_nodes):
+                        not_joint_nodes.append(node.get_name())
+                    if not (node.get_parent() in not_joint_nodes):
+                        not_joint_nodes.append(node.get_parent())
             node_index += 1
+        return not_joint_nodes
+
+    @staticmethod
+    def _get_skeleton_node(scene: Scene) -> str | None:
         for node in scene.get_nodes():
-            self.create_node(visual_scene, node, scene, not_joint_nodes)
+            if not node.get_instances() and not node.get_parent():
+                return node.get_name()
+        return None
 
-        collada_scene = SubElement(self.dae.root, 'scene')
-        SubElement(collada_scene, 'instance_visual_scene',
-                   url='#3dConverterScene',
-                   name='3d-Converter Scene')
-
-    def create_node(self, visual_scene, node: Node, scene: Scene, not_joint_nodes):
+    def _create_node(
+        self,
+        visual_scene: Element,
+        node: Node,
+        scene: Scene,
+        not_joint_nodes: list[str],
+        skeleton_node_id: str | None,
+    ):
         parent_name = node.get_parent()
-        parent = visual_scene
-        if parent_name != '':
-            parent = visual_scene.find(f'.//*[@id="{parent_name}"]')
-            if parent is None:
-                parent = visual_scene
-        node_name = node.get_name()
-        collada_node = SubElement(parent, 'node', id=node.get_name())
+
+        parent = None
+        if parent_name != "":
+            parent = visual_scene.find(f".//*[@id='{parent_name}']")
+
+        if parent is None:
+            parent = visual_scene
+
+        collada_node = SubElement(
+            parent, "node", id=node.get_name(), sid=node.get_name()
+        )
+
         for instance in node.get_instances():
             bind_material = None
 
             instance_type = instance.get_type()
-            if instance_type == 'CONT':
-                instance_controller = SubElement(collada_node, 'instance_controller',
-                                                 url=f'#{instance.get_name()}-cont')
-                bind_material = SubElement(instance_controller, 'bind_material')
-            elif instance_type == 'GEOM':
-                instance_controller = SubElement(collada_node, 'instance_geometry', url=f'#{instance.get_name()}-geom')
-                bind_material = SubElement(instance_controller, 'bind_material')
+            if instance_type == "CONT":
+                instance_controller = SubElement(
+                    collada_node,
+                    "instance_controller",
+                    url=f"#{instance.get_name()}-cont",
+                )
 
-            if instance_type in ['GEOM', 'CONT']:
-                technique_common = SubElement(bind_material, 'technique_common')
+                if skeleton_node_id is not None:
+                    skeleton = SubElement(instance_controller, "skeleton")
+                    skeleton.text = f"#{skeleton_node_id}"
+
+                bind_material = SubElement(instance_controller, "bind_material")
+            elif instance_type == "GEOM":
+                instance_controller = SubElement(
+                    collada_node,
+                    "instance_geometry",
+                    url=f"#{instance.get_name()}-geom",
+                )
+                bind_material = SubElement(instance_controller, "bind_material")
+
+            if instance_type in ["GEOM", "CONT"]:
+                technique_common = SubElement(bind_material, "technique_common")
                 for bind in instance.get_binds():
-                    SubElement(technique_common, 'instance_material',
-                               symbol=bind.get_symbol(),
-                               target=f'#{bind.get_target()}')
+                    SubElement(
+                        technique_common,
+                        "instance_material",
+                        symbol=bind.get_symbol(),
+                        target=f"#{bind.get_target()}",
+                    )
         else:
             if not (node.get_name() in not_joint_nodes):
-                collada_node.attrib['type'] = 'JOINT'
+                collada_node.attrib["type"] = "JOINT"
 
         time_input = []
         matrix_output = []
@@ -367,8 +433,12 @@ class Writer(WriterInterface):
                     matrix_values.append(str(column))
 
             if frame_index == 0:
-                SubElement(collada_node, 'matrix', sid='transform').text = ' '.join(matrix_values)
-            matrix_output.append(' '.join(matrix_values))
+                SubElement(collada_node, "matrix", sid="transform").text = " ".join(
+                    matrix_values
+                )
+            matrix_output.append(" ".join(matrix_values))
 
         if len(node.get_frames()) > 1:
-            self.create_animation(node_name, node.get_frames(), matrix_output, time_input)
+            self._create_animation(
+                node.get_name(), node.get_frames(), matrix_output, time_input
+            )

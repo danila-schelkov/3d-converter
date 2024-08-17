@@ -3,22 +3,22 @@ from models_converter.utilities.matrix.matrix4x4 import Matrix4x4
 
 
 def to_camelcase(property_name: str):
-    words = property_name.split('_')
+    words = property_name.split("_")
     for word_index in range(len(words)):
         word = words[word_index]
         if word_index > 0:
             word = word.capitalize()
         words[word_index] = word
-    camelcase_name = ''.join(words)
+    camelcase_name = "".join(words)
     return camelcase_name
 
 
 def to_lowercase(property_name: str) -> str:
-    result = ''
+    result = ""
 
     for char in property_name:
         if char.isupper():
-            char = f'_{char.lower()}'
+            char = f"_{char.lower()}"
 
         result += char
 
@@ -40,7 +40,10 @@ class GlTFProperty:
 
                 if attribute_value is None or value_type in (int, str, bool):
                     attribute_value = value
-                elif type(attribute_value) in (Vector3, Quaternion, Matrix4x4) and type(value) is list:
+                elif (
+                    type(attribute_value) in (Vector3, Quaternion, Matrix4x4)
+                    and type(value) is list
+                ):
                     attribute_value = type(attribute_value)(*value)
                 elif issubclass(attribute_value, GlTFProperty):
                     if value_type is list:
@@ -90,7 +93,7 @@ class GlTFProperty:
         if hasattr(self, item):
             return getattr(self, item)
         else:
-            raise IndexError('The object has no attribute named ' + item)
+            raise IndexError("The object has no attribute named " + item)
 
     def __repr__(self) -> str:
-        return f'<{self.__class__.__name__} ({self.to_dict()})>'
+        return f"<{self.__class__.__name__} ({self.to_dict()})>"

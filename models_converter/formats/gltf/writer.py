@@ -4,7 +4,7 @@ from models_converter.interfaces import WriterInterface
 
 
 class Writer(WriterInterface):
-    MAGIC = b'glTF'
+    MAGIC = b"glTF"
 
     def __init__(self):
         self.writen = self.MAGIC
@@ -12,9 +12,7 @@ class Writer(WriterInterface):
         self.data = bytes()
         self.asset = {"version": "2.0"}
         self.scene = 0
-        self.scenes = [{
-            "nodes": []
-        }]
+        self.scenes = [{"nodes": []}]
         self.nodes = []
         self.buffers = []
         self.buffer_views = []
@@ -82,15 +80,15 @@ class Writer(WriterInterface):
 
         json_data = json.dumps(self.as_dict())
 
-        self.buffers.append({
-            "byteLength": len(self.data)
-        })
+        self.buffers.append({"byteLength": len(self.data)})
         # pad json data with spaces
         json_data += " " * (4 - len(json_data) % 4)
         # pad binary data with null bytes
         self.data += bytes((4 - len(self.data) % 4))
 
-        self.writen += (2).to_bytes(4, 'little')
-        self.writen += (len(json_data) + len(self.data) + 28).to_bytes(4, 'little')
-        self.writen += len(json_data).to_bytes(4, 'little') + b'JSON' + json_data.encode()
-        self.writen += len(self.data).to_bytes(4, 'little') + b'BIN\x00' + self.data
+        self.writen += (2).to_bytes(4, "little")
+        self.writen += (len(json_data) + len(self.data) + 28).to_bytes(4, "little")
+        self.writen += (
+            len(json_data).to_bytes(4, "little") + b"JSON" + json_data.encode()
+        )
+        self.writen += len(self.data).to_bytes(4, "little") + b"BIN\x00" + self.data
