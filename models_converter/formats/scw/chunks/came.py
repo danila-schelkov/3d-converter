@@ -1,34 +1,39 @@
+from typing import cast
+
 from . import Chunk
 from ...universal.camera import Camera
 
 
 class CAME(Chunk):
-    def __init__(self, header):
-        super().__init__(header)
-        self.chunk_name = 'CAME'
+    chunk_name = "CAME"
 
-        self.camera: Camera or None = None
+    def __init__(self, camera: Camera | None = None):
+        self.camera: Camera | None = camera
 
-    def parse(self, buffer: bytes):
+    def parse(self, buffer: bytes, *args) -> None:
         super().parse(buffer)
 
-        name = self.readString()
-        self.readFloat()
-        fov = self.readFloat()
-        aspect_ratio = self.readFloat()
-        near = self.readFloat()
-        far = self.readFloat()
+        name = self.read_string()
+        self.read_float()
+        fov = self.read_float()
+        aspect_ratio = self.read_float()
+        near = self.read_float()
+        far = self.read_float()
 
-        self.camera = Camera(name=name, fov=fov, aspect_ratio=aspect_ratio, near=near, far=far)
+        self.camera = Camera(
+            name=cast(str, name), fov=fov, aspect_ratio=aspect_ratio, near=near, far=far
+        )
 
-    def encode(self):
+    def encode(self, header) -> None:
         super().encode()
 
-        self.writeString(self.camera.get_name())
-        self.writeFloat(self.camera.get_v1())
-        self.writeFloat(self.camera.get_fov())
-        self.writeFloat(self.camera.get_aspect_ration())
-        self.writeFloat(self.camera.get_near())
-        self.writeFloat(self.camera.get_far())
+        assert self.camera is not None
+
+        self.write_string(self.camera.get_name())
+        self.write_float(self.camera.get_v1())
+        self.write_float(self.camera.get_fov())
+        self.write_float(self.camera.get_aspect_ration())
+        self.write_float(self.camera.get_near())
+        self.write_float(self.camera.get_far())
 
         self.length = len(self.buffer)

@@ -1,25 +1,28 @@
-import typing
+from typing import Literal
 
 
 class Reader:
-    def __init__(self, buffer: bytes, endian: typing.Literal['big', 'little'] = 'big'):
+    def __init__(self, buffer: bytes, endian: Literal["big", "little"]):
         self.buffer = buffer
         self.endian = endian
+        self.bit_shift = 0
         self.i = 0
 
     def read(self, length: int = 1) -> bytes:
-        result = self.buffer[self.i:self.i + length]
+        result = self.buffer[self.i : self.i + length]
         self.i += length
 
         return result
 
-    def readUInteger(self, length: int = 1) -> int:
+    def read_unsigned_integer(self, length: int = 1) -> int:
+        self.flush_bit_state()
+
         result = 0
         for x in range(length):
             byte = self.buffer[self.i]
 
             bit_padding = x * 8
-            if self.endian == 'big':
+            if self.endian == "big":
                 bit_padding = (8 * (length - 1)) - bit_padding
 
             result |= byte << bit_padding
@@ -27,28 +30,28 @@ class Reader:
 
         return result
 
-    def readInteger(self, length: int = 1) -> int:
-        integer = self.readUInteger(length)
+    def read_integer(self, length: int = 1) -> int:
+        integer = self.read_unsigned_integer(length)
         result = integer
         if integer > 2 ** (length * 8) / 2:
             result -= 2 ** (length * 8)
         return result
 
-    def readUInt64(self) -> int:
-        return self.readUInteger(8)
+    def read_unsigned_int64(self) -> int:
+        return self.read_unsigned_integer(8)
 
-    def readInt64(self) -> int:
-        return self.readInteger(8)
+    def read_int64(self) -> int:
+        return self.read_integer(8)
 
-    def readFloat(self) -> float:
-        as_int = self.readUInt32()
+    def read_float(self) -> float:
+        as_int = self.read_unsigned_int32()
         binary = bin(as_int)
         binary = binary[2:].zfill(32)
 
-        sign = -1 if binary[0] == '1' else 1
+        sign = -1 if binary[0] == "1" else 1
         exponent = int(binary[1:9], 2) - 127
         mantissa_base = binary[9:]
-        mantissa_bin = '1' + mantissa_base
+        mantissa_bin = "1" + mantissa_base
         mantissa = 0
         val = 1
 
@@ -57,66 +60,64 @@ class Reader:
                 return 0
             else:
                 exponent = -126
-                mantissa_bin = '0' + mantissa_base
+                mantissa_bin = "0" + mantissa_base
 
         for char in mantissa_bin:
             mantissa += val * int(char)
             val = val / 2
 
-        result = sign * 2 ** exponent * mantissa
+        result = sign * 2**exponent * mantissa
         return result
 
-    def readUInt32(self) -> int:
-        return self.readUInteger(4)
+    def read_unsigned_int32(self) -> int:
+        return self.read_unsigned_integer(4)
 
-    def readInt32(self) -> int:
-        return self.readInteger(4)
+    def read_int32(self) -> int:
+        return self.read_integer(4)
 
-    def readNUInt16(self) -> float:
-        return self.readUInt16() / 65535
+    def read_normalized_unsigned_int16(self) -> float:
+        return self.read_unsigned_int16() / 65535
 
-    def readUInt16(self) -> int:
-        return self.readUInteger(2)
+    def read_unsigned_int16(self) -> int:
+        return self.read_unsigned_integer(2)
 
-    def readNInt16(self) -> float:
-        return self.readInt16() / 32512
+    def read_normalized_int16(self) -> float:
+        return self.read_int16() / 32512
 
-    def readInt16(self) -> int:
-        return self.readInteger(2)
+    def read_int16(self) -> int:
+        return self.read_integer(2)
 
-    def readUInt8(self) -> int:
-        return self.readUInteger()
+    def read_unsigned_int8(self) -> int:
+        return self.read_unsigned_integer()
 
-    def readInt8(self) -> int:
-        return self.readInteger()
+    def read_int8(self) -> int:
+        return self.read_integer()
 
-    def readBool(self) -> bool:
-        if self.readUInt8() >= 1:
+    def read_boolean(self) -> bool:
+        current_byte = self.buffer[self.i]
+        boolean = current_byte & 2**self.bit_shift
+
+        self.bit_shift += 1 & 7
+        if self.bit_shift == 0:
+            self.i += 1
+        if boolean == 1:
             return True
-        else:
-            return False
+        return False
 
-    readUInt = readUInteger
-    readInt = readInteger
+    def read_char(self, length: int = 1) -> str:
+        return self.read(length).decode("utf-8")
 
-    readULong = readUInt64
-    readLong = readInt64
+    def read_string(self) -> str | None:
+        length = self.read_unsigned_int16()
+        if length == 0xFF:
+            return None
 
-    readNUShort = readNUInt16
-    readNShort = readNInt16
-
-    readUShort = readUInt16
-    readShort = readInt16
-
-    readUByte = readUInt8
-    readByte = readInt8
-
-    def readChars(self, length: int = 1) -> str:
-        return self.read(length).decode('utf-8')
-
-    def readString(self) -> str:
-        length = self.readUShort()
-        return self.readChars(length)
+        return self.read_char(length)
 
     def tell(self) -> int:
         return self.i
+
+    def flush_bit_state(self):
+        if self.bit_shift > 0:
+            self.bit_shift = 0
+            self.i += 1

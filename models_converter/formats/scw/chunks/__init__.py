@@ -6,12 +6,4 @@ from .came import CAME
 from .node import NODE
 from .wend import WEND
 
-__all__ = [
-    'Chunk',
-    'HEAD',
-    'MATE',
-    'GEOM',
-    'CAME',
-    'NODE',
-    'WEND'
-]
+__all__ = ["Chunk", "HEAD", "MATE", "GEOM", "CAME", "NODE", "WEND"]

@@ -29,4 +29,3 @@ class Animation(GlTFProperty):
         self.samplers = self.AnimationSampler
 
         self.name = None
-
